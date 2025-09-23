@@ -348,7 +348,14 @@
                                     </div>
                                 </div>
                                 <ul class="list-disc pl-5 text-xs space-y-1">
-                                    ${mov.items.map(item => `<li><span class="font-semibold">${item.quantity}</span> x ${item.productName}</li>`).join('')}
+                                    ${mov.items.map(item => `
+                                        <li>
+                                            <div class="flex justify-between items-center">
+                                                <span><span class="font-semibold">${item.quantity}</span> x ${item.productName}</span>
+                                                ${item.stockBefore !== undefined ? `<span class="text-xs text-gray-500 font-mono">Stock: ${item.stockBefore} → ${item.stockAfter}</span>` : ''}
+                                            </div>
+                                        </li>
+                                    `).join('')}
                                 </ul>
                             </div>
                         </div>
@@ -454,28 +461,35 @@
             const responsible = form.querySelector('.responsible-select').value;
             if (!responsible) { alert('Por favor, selecciona un responsable.'); return; }
 
-            const itemsToUpdate = [], movementItems = [];
+            const movementItems = [];
             const container = document.getElementById(`${formType}-items-container`);
             container.querySelectorAll('input[type="number"]').forEach(input => {
                 const quantity = parseInt(input.value, 10);
                 if (quantity > 0) {
                     const product = productsCache.find(p => p.id === input.name);
-                    movementItems.push({ productId: product.id, productName: product.name, quantity });
+                    const stockBefore = product.stock;
+                    const stockAfter = isExit ? stockBefore - quantity : stockBefore + quantity;
+                    movementItems.push({ 
+                        productId: product.id, 
+                        productName: product.name, 
+                        quantity,
+                        stockBefore,
+                        stockAfter
+                    });
                 }
             });
             
             if (movementItems.length > 0) {
                 const batch = writeBatch(db);
                 movementItems.forEach(item => {
-                     const product = productsCache.find(p => p.id === item.productId);
-                     const newStock = isExit ? product.stock - item.quantity : product.stock + item.quantity;
-                     batch.update(doc(productsCollection, item.productId), { stock: newStock });
+                     batch.update(doc(productsCollection, item.productId), { stock: item.stockAfter });
                 });
-                await batch.commit();
                 
                 const reason = isExit ? document.getElementById('exit-reason').value : document.getElementById('entry-reason').value;
                 const movementData = { items: movementItems, timestamp: Timestamp.now(), type: isExit ? 'exit' : 'entry', responsible, reason };
-                await addDoc(movementsCollection, movementData);
+                batch.set(doc(movementsCollection), movementData);
+                
+                await batch.commit();
             }
             form.reset();
             closeModal(isExit ? modals.registerExit : modals.registerEntry);
@@ -521,7 +535,7 @@
                  }
             });
 
-            const updatedMovementData = { items: newItems, responsible, reason, timestamp: Timestamp.now() };
+            const updatedMovementData = { items: newItems, responsible, reason, timestamp: Timestamp.now(), type: movementType };
             batch.update(doc(movementsCollection, movementId), updatedMovementData);
 
             await batch.commit();
@@ -536,9 +550,9 @@
             const stockSheet = XLSX.utils.json_to_sheet(stockData);
             stockSheet['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 15 }];
             
-            const historyData = movementsCache.flatMap(mov => mov.items.map(item => ({ 'Motivo/Evento': mov.reason, 'Responsable': mov.responsible, 'Fecha': new Date(mov.timestamp.seconds * 1000).toLocaleString(), 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity })));
+            const historyData = movementsCache.flatMap(mov => mov.items.map(item => ({ 'Motivo/Evento': mov.reason, 'Responsable': mov.responsible, 'Fecha': new Date(mov.timestamp.seconds * 1000).toLocaleString(), 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity, 'Stock Antes': item.stockBefore, 'Stock Después': item.stockAfter })));
             const historySheet = XLSX.utils.json_to_sheet(historyData);
-            historySheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 10 }];
+            historySheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
 
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, stockSheet, "Stock Actual");
