@@ -19,7 +19,10 @@
         .accordion-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+        .accordion-content.open {
+             transition: max-height 0.3s ease-in;
         }
     </style>
 </head>
@@ -57,7 +60,7 @@
 
             <div class="bg-white p-6 rounded-2xl shadow-lg">
                 <h2 class="text-2xl font-semibold mb-6">Historial de Movimientos</h2>
-                <div id="movements-history" class="space-y-2">
+                <div id="movements-history" class="space-y-2 max-h-[600px] overflow-y-auto">
                     <p class="text-center py-8 text-gray-500">No hay movimientos registrados.</p>
                 </div>
             </div>
@@ -108,6 +111,25 @@
         </div>
     </div>
     
+    <div id="edit-movement-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
+            <h3 class="text-2xl font-semibold mb-6">Editar Movimiento</h3>
+            <form id="edit-movement-form" class="space-y-4">
+                <input type="hidden" id="edit-movement-id">
+                <input type="hidden" id="edit-movement-type">
+                <input type="hidden" id="original-movement-items">
+                <input type="text" id="edit-movement-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo o Evento">
+                <input type="text" id="edit-movement-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
+                <div id="edit-movement-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
+                <div class="responsible-section-container"></div>
+                <div class="flex justify-end space-x-4 mt-4">
+                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold">Actualizar Movimiento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <div id="register-entry-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
             <h3 class="text-2xl font-semibold mb-6">Registrar Entrada de Material</h3>
@@ -128,7 +150,7 @@
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
             <h3 class="text-2xl font-semibold mb-6">Registrar Salida de Material</h3>
             <form id="register-exit-form" class="space-y-4">
-                <input type="text" id="event-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Evento o Acción">
+                <input type="text" id="exit-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Evento o Acción">
                 <input type="text" id="exit-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
                 <div id="exit-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
                 <div class="responsible-section-container"></div>
@@ -168,16 +190,15 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAs_LyHNTXEM40bnFMRVYF0FvAcfY4upJw",
-  authDomain: "control-de-inventario-a6a98.firebaseapp.com",
-  projectId: "control-de-inventario-a6a98",
-  storageBucket: "control-de-inventario-a6a98.firebasestorage.app",
-  messagingSenderId: "845532432483",
-  appId: "1:845532432483:web:ed38fcc4cad0537203d056",
-  measurementId: "G-7VVWLJG9P6"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAs_LyHNTXEM40bnFMRVYF0FvAcfY4upJw",
+            authDomain: "control-de-inventario-a6a98.firebaseapp.com",
+            projectId: "control-de-inventario-a6a98",
+            storageBucket: "control-de-inventario-a6a98.appspot.com",
+            messagingSenderId: "845532432483",
+            appId: "1:845532432483:web:ed38fcc4cad0537203d056",
+            measurementId: "G-7VVWLJG9P6"
+        };
 
         const appId = firebaseConfig.appId; 
         const initialAuthToken = null; 
@@ -192,12 +213,15 @@ const firebaseConfig = {
         const categoriesCollection = collection(db, `/artifacts/${appId}/public/data/categories`);
 
         let productsCache = [], peopleCache = [], movementsCache = [], categoriesCache = [];
+        let expandedCategories = new Set();
+        let expandedMovements = new Set();
 
         const modals = {
             addProduct: document.getElementById('add-product-modal'),
             registerEntry: document.getElementById('register-entry-modal'),
             registerExit: document.getElementById('register-exit-modal'),
             adjustStock: document.getElementById('adjust-stock-modal'),
+            editMovement: document.getElementById('edit-movement-modal'),
         };
 
         const openModal = (modal) => {
@@ -205,13 +229,14 @@ const firebaseConfig = {
             setTimeout(() => modal.querySelector('div').classList.remove('scale-95'), 10);
         };
         const closeModal = (modal) => {
+            if (!modal) return;
             modal.querySelector('div').classList.add('scale-95');
             setTimeout(() => modal.classList.remove('is-open'), 300);
         };
         
         document.getElementById('open-add-product-modal').addEventListener('click', () => openModal(modals.addProduct));
-        document.getElementById('open-register-entry-modal').addEventListener('click', () => { renderMovementForm('', 'entry'); openModal(modals.registerEntry); });
-        document.getElementById('open-register-exit-modal').addEventListener('click', () => { renderMovementForm('', 'exit'); openModal(modals.registerExit); });
+        document.getElementById('open-register-entry-modal').addEventListener('click', () => { renderMovementForm(productsCache, 'entry'); openModal(modals.registerEntry); });
+        document.getElementById('open-register-exit-modal').addEventListener('click', () => { renderMovementForm(productsCache, 'exit'); openModal(modals.registerExit); });
         document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
         
         const initialCategories = [ { name: 'Folletería', emoji: '📄' }, { name: 'Cuadernos', emoji: '📓' }, { name: 'Carpetas', emoji: '📁' }, { name: 'Anotadores', emoji: '📝' }, { name: 'Institucional', emoji: '🏢' } ];
@@ -220,23 +245,24 @@ const firebaseConfig = {
         
         async function seedData() {
             const catSnap = await getDocs(query(categoriesCollection));
+            let allCats = catSnap.docs.map(d => ({id: d.id, ...d.data()}));
             if (catSnap.empty) {
                 const batch = writeBatch(db);
                 initialCategories.forEach(item => batch.set(doc(categoriesCollection), item));
                 await batch.commit();
+                const newCatSnap = await getDocs(query(categoriesCollection));
+                allCats = newCatSnap.docs.map(d => ({id: d.id, ...d.data()}));
             }
 
             const prodSnap = await getDocs(query(productsCollection));
-            if (prodSnap.empty) {
-                const allCats = (await getDocs(query(categoriesCollection))).docs.map(d => ({id: d.id, ...d.data()}));
+            if (prodSnap.empty && allCats.length > 0) {
                 const categoryMap = Object.fromEntries(allCats.map(c => [c.name, c.id]));
-                
                 const batch = writeBatch(db);
                 initialProducts.forEach(p => {
                     const { category, ...productData } = p;
                     if(categoryMap[category]) {
                         productData.categoryId = categoryMap[category];
-                        if (!productData.name.toLowerCase().includes('folletería')) {
+                        if (p.category === 'Folletería' && !productData.name.toLowerCase().includes('folletería')) {
                             productData.name = `Folletería - ${productData.name}`;
                         }
                         batch.set(doc(productsCollection), productData);
@@ -258,34 +284,34 @@ const firebaseConfig = {
                  container.innerHTML = `<p class="text-center py-8 text-gray-500">No hay categorías. Agrega un producto para empezar.</p>`;
                  return;
             }
-
             container.innerHTML = categoriesCache.map(category => {
                 const productsInCategory = productsCache.filter(p => p.categoryId === category.id);
+                const isExpanded = expandedCategories.has(category.id);
                 return `
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="category-header flex justify-between items-center p-3 cursor-pointer">
+                    <div class="category-header flex justify-between items-center p-3 cursor-pointer" data-id="${category.id}">
                         <div class="flex items-center gap-3">
                             <span class="text-xl">${category.emoji || '📁'}</span>
                             <h3 class="font-bold text-lg text-gray-800">${category.name}</h3>
                             <span class="text-sm bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded-full">${productsInCategory.length}</span>
                         </div>
-                        <svg class="arrow-icon h-5 w-5 text-gray-600 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        <svg class="arrow-icon h-5 w-5 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     </div>
-                    <div class="products-list accordion-content">
+                    <div class="products-list accordion-content ${isExpanded ? 'open' : ''}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
                         ${productsInCategory.length > 0 ? productsInCategory.map(p => {
                              let rowClass = 'border-t border-gray-200 flex items-center justify-between p-3 gap-2';
                              if (p.stock < 50) rowClass += ' bg-red-50'; else if (p.stock < 100) rowClass += ' bg-yellow-50';
                              return `
                              <div class="${rowClass}">
-                                 <div class="flex items-center flex-grow">
-                                     <span class="w-8 text-xl text-center">${p.emoji || (p.color && p.color !== '#ffffff' ? `<span class="inline-block w-3 h-3 rounded-full" style="background-color: ${p.color};"></span>` : '')}</span>
-                                     <span class="font-medium">${p.name}</span>
+                                 <div class="flex items-center flex-grow min-w-0">
+                                     <span class="w-8 text-xl text-center flex-shrink-0">${p.emoji || (p.color && p.color !== '#ffffff' ? `<span class="inline-block w-3 h-3 rounded-full" style="background-color: ${p.color};"></span>` : '')}</span>
+                                     <span class="font-medium truncate ml-2">${p.name}</span>
                                  </div>
-                                 <div class="text-center">
+                                 <div class="text-center flex-shrink-0">
                                      <p class="text-lg font-bold ${p.stock < 50 ? 'text-red-700' : 'text-gray-800'}">${p.stock}</p>
                                      <p class="text-xs text-gray-500">en stock</p>
                                  </div>
-                                 <div class="flex gap-2">
+                                 <div class="flex gap-2 flex-shrink-0">
                                      <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 text-sm font-semibold">Editar</button>
                                      <button data-id="${p.id}" class="delete-product-btn bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 text-sm font-semibold">Eliminar</button>
                                  </div>
@@ -302,45 +328,62 @@ const firebaseConfig = {
             container.innerHTML = movementsCache.length === 0 ? `<p class="text-center py-8 text-gray-500">No hay movimientos.</p>` : movementsCache.map(mov => {
                 const isEntry = mov.type === 'entry';
                 const headerColor = isEntry ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900';
+                const isExpanded = expandedMovements.has(mov.id);
                 return `
                     <div class="movement-item rounded-lg border overflow-hidden">
-                        <div class="movement-header flex justify-between items-center p-2 cursor-pointer ${headerColor}">
-                            <p class="font-bold text-sm truncate pr-2">${mov.reason || mov.event}</p>
+                        <div class="movement-header flex justify-between items-center p-2 cursor-pointer ${headerColor}" data-id="${mov.id}">
+                            <p class="font-bold text-sm truncate pr-2">${mov.reason || 'Movimiento'}</p>
                             <div class="flex items-center gap-2">
                                 <p class="text-xs font-mono">${new Date(mov.timestamp.seconds * 1000).toLocaleDateString()}</p>
-                                <svg class="arrow-icon h-5 w-5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                <svg class="arrow-icon h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                             </div>
                         </div>
-                        <div class="movement-details accordion-content bg-white p-3 text-sm">
-                             <p class="text-xs text-gray-500 mb-2">Por: <span class="font-medium text-gray-700">${mov.responsible || 'N/A'}</span></p>
-                             <ul class="list-disc pl-5 text-xs space-y-1">
-                                ${mov.items.map(item => `<li><span class="font-semibold">${item.quantity}</span> x ${item.productName}</li>`).join('')}
-                            </ul>
+                        <div class="movement-details accordion-content ${isExpanded ? 'open' : ''}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
+                            <div class="bg-white p-3 text-sm">
+                                <div class="flex justify-between items-center mb-2">
+                                    <p class="text-xs text-gray-500">Por: <span class="font-medium text-gray-700">${mov.responsible || 'N/A'}</span></p>
+                                    <div>
+                                        <button data-id="${mov.id}" class="edit-movement-btn text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">Editar</button>
+                                        <button data-id="${mov.id}" class="delete-movement-btn text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200">Eliminar</button>
+                                    </div>
+                                </div>
+                                <ul class="list-disc pl-5 text-xs space-y-1">
+                                    ${mov.items.map(item => `<li><span class="font-semibold">${item.quantity}</span> x ${item.productName}</li>`).join('')}
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
         
-        function renderMovementForm(searchTerm = '', type) {
-            const container = document.getElementById(`${type}-items-container`);
-            const filtered = productsCache.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-            container.innerHTML = filtered.length === 0 ? `<p class="text-center text-gray-500 py-4">No se encontraron productos.</p>` : filtered.map(p => `
+        function renderMovementForm(products, formType, currentItems = []) {
+            const container = document.getElementById(`${formType}-items-container`);
+            const searchInput = document.getElementById(`${formType}-search`);
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm));
+            
+            container.innerHTML = filtered.length === 0 ? `<p class="text-center text-gray-500 py-4">No se encontraron productos.</p>` : filtered.map(p => {
+                const currentItem = currentItems.find(item => item.productId === p.id || item.productName === p.name);
+                const quantity = currentItem ? currentItem.quantity : '';
+                return `
                 <div class="grid grid-cols-3 gap-4 items-center">
-                    <label for="${type}-${p.id}" class="col-span-2 text-gray-700">${p.name} (Stock: ${p.stock})</label>
-                    <input type="number" id="${type}-${p.id}" name="${p.id}" min="0" placeholder="0" class="col-span-1 p-2 border border-gray-300 rounded-lg w-full">
+                    <label for="${formType}-${p.id}" class="col-span-2 text-gray-700">${p.name} (Stock: ${p.stock})</label>
+                    <input type="number" value="${quantity}" id="${formType}-${p.id}" name="${p.id}" min="0" placeholder="0" class="col-span-1 p-2 border border-gray-300 rounded-lg w-full">
                 </div>
-            `).join('');
+                `
+            }).join('');
         }
 
-        function renderResponsibleSection(container) {
+        function renderResponsibleSection(container, selectedResponsible = '') {
             container.innerHTML = `
                 <div class="border-t pt-4">
                     <label class="block text-gray-700 font-medium mb-2">Responsable</label>
                     <div class="flex gap-2">
                         <select required class="responsible-select w-full p-3 border border-gray-300 rounded-lg">
                             <option value="">Seleccionar persona...</option>
-                            ${peopleCache.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                            ${peopleCache.map(p => `<option value="${p.name}" ${p.name === selectedResponsible ? 'selected' : ''}>${p.name}</option>`).join('')}
                         </select>
                         <input type="text" class="new-person-input p-3 border border-gray-300 rounded-lg" placeholder="Nueva persona">
                         <button type="button" class="add-person-btn bg-gray-600 text-white px-4 rounded-lg hover:bg-gray-700 font-bold">+</button>
@@ -404,36 +447,86 @@ const firebaseConfig = {
             closeModal(modals.adjustStock);
         });
         
-        async function handleMovementSubmit(e, type) {
+        async function handleMovementSubmit(e, formType) {
             e.preventDefault();
-            const isExit = type === 'exit';
-            const responsible = e.target.querySelector('.responsible-select').value;
+            const isExit = formType.includes('exit');
+            const form = e.target;
+            const responsible = form.querySelector('.responsible-select').value;
             if (!responsible) { alert('Por favor, selecciona un responsable.'); return; }
 
             const itemsToUpdate = [], movementItems = [];
-            const container = document.getElementById(`${type}-items-container`);
+            const container = document.getElementById(`${formType}-items-container`);
             container.querySelectorAll('input[type="number"]').forEach(input => {
                 const quantity = parseInt(input.value, 10);
                 if (quantity > 0) {
                     const product = productsCache.find(p => p.id === input.name);
-                    itemsToUpdate.push({ ref: doc(productsCollection, product.id), newStock: isExit ? product.stock - quantity : product.stock + quantity });
-                    movementItems.push({ productName: product.name, quantity });
+                    movementItems.push({ productId: product.id, productName: product.name, quantity });
                 }
             });
             
-            if (itemsToUpdate.length > 0) {
+            if (movementItems.length > 0) {
                 const batch = writeBatch(db);
-                itemsToUpdate.forEach(item => batch.update(item.ref, { stock: item.newStock }));
+                movementItems.forEach(item => {
+                     const product = productsCache.find(p => p.id === item.productId);
+                     const newStock = isExit ? product.stock - item.quantity : product.stock + item.quantity;
+                     batch.update(doc(productsCollection, item.productId), { stock: newStock });
+                });
                 await batch.commit();
                 
-                const movementData = { items: movementItems, timestamp: Timestamp.now(), type, responsible };
-                if (isExit) movementData.event = document.getElementById('event-name').value;
-                else movementData.reason = document.getElementById('entry-reason').value;
+                const reason = isExit ? document.getElementById('exit-reason').value : document.getElementById('entry-reason').value;
+                const movementData = { items: movementItems, timestamp: Timestamp.now(), type: isExit ? 'exit' : 'entry', responsible, reason };
                 await addDoc(movementsCollection, movementData);
             }
-            e.target.reset();
+            form.reset();
             closeModal(isExit ? modals.registerExit : modals.registerEntry);
         }
+
+        document.getElementById('edit-movement-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const movementId = form.querySelector('#edit-movement-id').value;
+            const movementType = form.querySelector('#edit-movement-type').value;
+            const originalItems = JSON.parse(form.querySelector('#original-movement-items').value);
+            const responsible = form.querySelector('.responsible-select').value;
+            const reason = form.querySelector('#edit-movement-reason').value;
+
+            const newItems = [];
+            form.querySelector('#edit-movement-items-container').querySelectorAll('input[type="number"]').forEach(input => {
+                const quantity = parseInt(input.value, 10);
+                if (quantity > 0) {
+                    const product = productsCache.find(p => p.id === input.name);
+                    newItems.push({ productId: product.id, productName: product.name, quantity });
+                }
+            });
+
+            const stockChanges = new Map();
+
+            // 1. Revert original movement
+            originalItems.forEach(item => {
+                const change = movementType === 'exit' ? item.quantity : -item.quantity;
+                stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
+            });
+
+            // 2. Apply new movement
+            newItems.forEach(item => {
+                const change = movementType === 'exit' ? -item.quantity : item.quantity;
+                stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
+            });
+            
+            const batch = writeBatch(db);
+            stockChanges.forEach((change, productId) => {
+                 const product = productsCache.find(p => p.id === productId);
+                 if(product) {
+                    batch.update(doc(productsCollection, productId), { stock: product.stock + change });
+                 }
+            });
+
+            const updatedMovementData = { items: newItems, responsible, reason, timestamp: Timestamp.now() };
+            batch.update(doc(movementsCollection, movementId), updatedMovementData);
+
+            await batch.commit();
+            closeModal(modals.editMovement);
+        });
 
         function exportToExcel() {
             const stockData = productsCache.map(p => {
@@ -443,7 +536,7 @@ const firebaseConfig = {
             const stockSheet = XLSX.utils.json_to_sheet(stockData);
             stockSheet['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 15 }];
             
-            const historyData = movementsCache.flatMap(mov => mov.items.map(item => ({ 'Motivo/Evento': mov.reason || mov.event, 'Responsable': mov.responsible, 'Fecha': new Date(mov.timestamp.seconds * 1000).toLocaleString(), 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity })));
+            const historyData = movementsCache.flatMap(mov => mov.items.map(item => ({ 'Motivo/Evento': mov.reason, 'Responsable': mov.responsible, 'Fecha': new Date(mov.timestamp.seconds * 1000).toLocaleString(), 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity })));
             const historySheet = XLSX.utils.json_to_sheet(historyData);
             historySheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 10 }];
 
@@ -467,28 +560,67 @@ const firebaseConfig = {
                     input.value = '';
                 }
             }
+        });
+        
+        document.getElementById('inventory-container').addEventListener('click', (e) => {
             const catHeader = e.target.closest('.category-header');
             if(catHeader) {
+                const categoryId = catHeader.dataset.id;
+                if (expandedCategories.has(categoryId)) {
+                    expandedCategories.delete(categoryId);
+                } else {
+                    expandedCategories.add(categoryId);
+                }
                 const content = catHeader.nextElementSibling;
                 const arrow = catHeader.querySelector('.arrow-icon');
-                arrow.classList.toggle('rotate-180');
-                if (content.style.maxHeight) {
-                    content.style.maxHeight = null;
-                } else {
-                    content.style.maxHeight = content.scrollHeight + "px";
-                }
+                const isOpen = content.classList.toggle('open');
+                arrow.classList.toggle('rotate-180', isOpen);
+                content.style.maxHeight = isOpen ? content.scrollHeight + "px" : '0px';
             }
-            const movHeader = e.target.closest('.movement-header');
-            if(movHeader) {
-                const content = movHeader.nextElementSibling;
-                const arrow = movHeader.querySelector('.arrow-icon');
-                arrow.classList.toggle('rotate-180');
-                if (content.style.maxHeight) {
-                    content.style.maxHeight = null;
+        });
+
+        document.getElementById('movements-history').addEventListener('click', (e) => {
+             const movHeader = e.target.closest('.movement-header');
+             if (movHeader) {
+                const movementId = movHeader.dataset.id;
+                if (expandedMovements.has(movementId)) {
+                    expandedMovements.delete(movementId);
                 } else {
-                    content.style.maxHeight = content.scrollHeight + "px";
+                    expandedMovements.add(movementId);
                 }
-            }
+                 const content = movHeader.nextElementSibling;
+                 const arrow = movHeader.querySelector('.arrow-icon');
+                 const isOpen = content.classList.toggle('open');
+                 arrow.classList.toggle('rotate-180', isOpen);
+                 content.style.maxHeight = isOpen ? content.scrollHeight + "px" : '0px';
+             }
+
+             const editBtn = e.target.closest('.edit-movement-btn');
+             if(editBtn) {
+                const movement = movementsCache.find(m => m.id === editBtn.dataset.id);
+                document.getElementById('edit-movement-id').value = movement.id;
+                document.getElementById('edit-movement-type').value = movement.type;
+                document.getElementById('original-movement-items').value = JSON.stringify(movement.items);
+                document.getElementById('edit-movement-reason').value = movement.reason;
+                renderResponsibleSection(modals.editMovement.querySelector('.responsible-section-container'), movement.responsible);
+                renderMovementForm(productsCache, 'edit-movement', movement.items);
+                openModal(modals.editMovement);
+             }
+
+             const deleteBtn = e.target.closest('.delete-movement-btn');
+             if(deleteBtn && confirm('¿Estás seguro? Esta acción revertirá el stock y eliminará el registro permanentemente.')) {
+                const movement = movementsCache.find(m => m.id === deleteBtn.dataset.id);
+                const batch = writeBatch(db);
+                movement.items.forEach(item => {
+                    const product = productsCache.find(p => p.id === item.productId);
+                    if(product) {
+                        const newStock = movement.type === 'exit' ? product.stock + item.quantity : product.stock - item.quantity;
+                        batch.update(doc(productsCollection, item.productId), { stock: newStock });
+                    }
+                });
+                batch.delete(doc(movementsCollection, movement.id));
+                batch.commit();
+             }
         });
 
         async function main() {
@@ -500,9 +632,12 @@ const firebaseConfig = {
                         populateCategoryDropdowns(categoriesCache);
                         renderInventory();
                     });
-                    onSnapshot(productsCollection, snap => { productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderInventory(); });
+                    onSnapshot(productsCollection, snap => { 
+                        productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+                        renderInventory(); 
+                    });
                     onSnapshot(query(movementsCollection), snap => {
-                        movementsCache = snap.docs.map(d => ({...d.data()})).sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+                        movementsCache = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
                         renderMovements();
                     });
                     onSnapshot(peopleCollection, snap => {
@@ -511,7 +646,7 @@ const firebaseConfig = {
                     });
                 }
             });
-            if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken); else await signInAnonymously(auth);
+            await signInAnonymously(auth);
             
             document.getElementById('inventory-container').addEventListener('click', (e) => {
                 const adjustBtn = e.target.closest('.adjust-stock-btn');
@@ -532,14 +667,16 @@ const firebaseConfig = {
             });
 
             document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
-            document.getElementById('exit-search').addEventListener('input', (e) => renderMovementForm(e.target.value, 'exit'));
-            document.getElementById('entry-search').addEventListener('input', (e) => renderMovementForm(e.target.value, 'entry'));
+            document.getElementById('exit-search').addEventListener('input', (e) => renderMovementForm(productsCache.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())), 'exit'));
+            document.getElementById('entry-search').addEventListener('input', (e) => renderMovementForm(productsCache.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())), 'entry'));
+            document.getElementById('edit-movement-search').addEventListener('input', (e) => {
+                const movement = movementsCache.find(m => m.id === document.getElementById('edit-movement-id').value);
+                renderMovementForm(productsCache.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())), 'edit-movement', movement.items);
+            });
         }
         main();
     </script>
 </body>
 
 </html>
-
-
 
