@@ -31,11 +31,11 @@
 <body class="bg-gray-100 text-gray-800">
 
     <div class="container mx-auto p-4 md:p-8">
-        <header class="bg-blue-700 text-white p-4 md:p-6 rounded-2xl shadow-lg mb-8 flex items-center gap-4">
+        <header class="bg-slate-800 text-white p-4 md:p-6 rounded-2xl shadow-lg mb-8 flex items-center gap-4">
             <img src="logoic.png" alt="Logo" class="h-12 w-12 md:h-16 md:w-16 object-contain">
             <div>
                 <h1 class="text-2xl md:text-4xl font-bold">Sistema de Control de Inventario</h1>
-                <p class="text-blue-200 mt-1">Gestiona el stock de tu material institucional de forma centralizada.</p>
+                <p class="text-slate-300 mt-1">Gestiona el stock de tu material institucional de forma centralizada.</p>
             </div>
         </header>
 
@@ -48,11 +48,11 @@
                              <i data-lucide="plus-circle" class="h-5 w-5"></i>
                             Agregar
                         </button>
-                        <button id="open-register-entry-modal" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-purple-700 transition duration-300 flex items-center gap-2">
+                        <button id="open-register-entry-modal" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition duration-300 flex items-center gap-2">
                            <i data-lucide="log-in" class="h-5 w-5"></i>
                             Registrar Entrada
                         </button>
-                        <button id="open-register-exit-modal" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition duration-300 flex items-center gap-2">
+                        <button id="open-register-exit-modal" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-300 flex items-center gap-2">
                            <i data-lucide="log-out" class="h-5 w-5"></i>
                             Registrar Salida
                         </button>
@@ -93,22 +93,18 @@
                 </div>
                 <div id="new-category-fields" class="hidden space-y-4 border p-4 rounded-lg">
                     <input type="text" id="new-category-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre Nueva Categoría">
-                     <div>
-                        <label class="text-sm">Icono (de <a href="https://lucide.dev/" target="_blank" class="text-blue-600 underline">Lucide</a>)</label>
-                        <input type="text" id="new-category-icon-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="folder">
-                    </div>
                 </div>
 
                 <div id="product-fields" class="space-y-4 border p-4 rounded-lg">
                     <input type="text" id="add-product-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <input type="number" id="add-initial-stock" min="0" value="0" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
+                        <input type="number" id="add-initial-stock" min="0" value="0" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
                         <div>
                             <label class="text-sm">Icono (de <a href="https://lucide.dev/" target="_blank" class="text-blue-600 underline">Lucide</a>)</label>
                             <input type="text" id="add-product-icon-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="package">
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="text-sm">Color de fondo del icono</label>
                             <input type="color" id="add-product-icon-bg" value="#e5e7eb" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
@@ -117,6 +113,15 @@
                             <label class="text-sm">Color del icono</label>
                             <input type="color" id="add-product-icon-color" value="#1f2937" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
                         </div>
+                    </div>
+                     <div>
+                        <label for="add-product-unit" class="text-sm">Unidad de Medida</label>
+                        <select id="add-product-unit" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option value="unidades">Unidades</option>
+                            <option value="bolsa_50">Bolsa x50</option>
+                            <option value="bolsa_100">Bolsa x100</option>
+                            <option value="bolsa_200">Bolsa x200</option>
+                        </select>
                     </div>
                 </div>
                 <div class="responsible-section-container"></div>
@@ -135,7 +140,10 @@
                  <input type="hidden" id="edit-movement-id">
                  <input type="hidden" id="edit-movement-type">
                  <input type="hidden" id="original-movement-items">
-                 <input type="text" id="edit-movement-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo o Evento">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="edit-movement-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo o Evento">
+                    <input type="date" id="edit-movement-date" required class="w-full p-3 border border-gray-300 rounded-lg">
+                 </div>
                  <input type="text" id="edit-movement-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
                  <div id="edit-movement-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
                  <div class="responsible-section-container"></div>
@@ -151,13 +159,16 @@
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
             <h3 class="text-2xl font-semibold mb-6">Registrar Entrada de Material</h3>
             <form id="register-entry-form" class="space-y-4">
-                <input type="text" id="entry-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo (Ej: Compra #123)">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="entry-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo (Ej: Compra #123)">
+                    <input type="date" id="entry-date" required class="w-full p-3 border border-gray-300 rounded-lg">
+                </div>
                 <input type="text" id="entry-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
                 <div id="entry-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
                 <div class="responsible-section-container"></div>
                 <div class="flex justify-end space-x-4 mt-4">
                     <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">Registrar</button>
+                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Registrar</button>
                 </div>
             </form>
         </div>
@@ -167,13 +178,16 @@
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
             <h3 class="text-2xl font-semibold mb-6">Registrar Salida de Material</h3>
             <form id="register-exit-form" class="space-y-4">
-                <input type="text" id="exit-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Evento o Acción">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="exit-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Evento o Acción">
+                    <input type="date" id="exit-date" required class="w-full p-3 border border-gray-300 rounded-lg">
+                </div>
                 <input type="text" id="exit-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
                 <div id="exit-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
                 <div class="responsible-section-container"></div>
                 <div class="flex justify-end space-x-4 mt-4">
                     <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Registrar</button>
+                    <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold">Registrar</button>
                 </div>
             </form>
         </div>
@@ -204,6 +218,15 @@
                         <input type="color" id="adjust-product-icon-color" value="#1f2937" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
                     </div>
                 </div>
+                 <div>
+                    <label for="adjust-product-unit" class="text-sm">Unidad de Medida</label>
+                    <select id="adjust-product-unit" class="w-full p-2 border border-gray-300 rounded-lg">
+                        <option value="unidades">Unidades</option>
+                        <option value="bolsa_50">Bolsa x50</option>
+                        <option value="bolsa_100">Bolsa x100</option>
+                        <option value="bolsa_200">Bolsa x200</option>
+                    </select>
+                </div>
                 <div class="flex justify-end space-x-4">
                     <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
                     <button type="submit" class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold">Actualizar</button>
@@ -233,7 +256,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAs_LyHNTXEM40bnFMRVYF0FvAcfY4upJw",
@@ -260,6 +283,8 @@
         let expandedCategories = new Set();
         let expandedMovements = new Set();
         let confirmCallback = null;
+        let currentMovementQuantities = new Map();
+        let categorySortConfigs = {};
 
         const modals = {
             addProduct: document.getElementById('add-product-modal'),
@@ -292,6 +317,10 @@
             openModal(modals.confirm);
         }
 
+        function getTodayDateString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
         document.getElementById('alert-ok-btn').addEventListener('click', () => closeModal(modals.alert));
         document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
             confirmCallback = null;
@@ -304,12 +333,22 @@
         });
         
         document.getElementById('open-add-product-modal').addEventListener('click', () => openModal(modals.addProduct));
-        document.getElementById('open-register-entry-modal').addEventListener('click', () => { renderMovementForm(productsCache, 'entry'); openModal(modals.registerEntry); });
-        document.getElementById('open-register-exit-modal').addEventListener('click', () => { renderMovementForm(productsCache, 'exit'); openModal(modals.registerExit); });
+        document.getElementById('open-register-entry-modal').addEventListener('click', () => { 
+            currentMovementQuantities.clear(); 
+            document.getElementById('entry-date').value = getTodayDateString();
+            renderMovementForm('entry'); 
+            openModal(modals.registerEntry); 
+        });
+        document.getElementById('open-register-exit-modal').addEventListener('click', () => { 
+            currentMovementQuantities.clear(); 
+            document.getElementById('exit-date').value = getTodayDateString();
+            renderMovementForm('exit'); 
+            openModal(modals.registerExit); 
+        });
         document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
         
-        const initialCategories = [ { name: 'Folletería', iconName: 'file-text' }, { name: 'Cuadernos', iconName: 'notebook' }, { name: 'Carpetas', iconName: 'folder' }, { name: 'Anotadores', iconName: 'pencil-ruler' }, { name: 'Institucional', iconName: 'building-2' } ];
-        const initialProducts = [ { name: 'Folletería institucional', stock: 1000, category: 'Folletería', iconName: 'file-text' }, { name: 'Dossier institucional', stock: 300, category: 'Institucional', iconName: 'book-open' }, { name: 'Carpetas', stock: 800, category: 'Carpetas', iconName: 'folder' }, { name: 'Anotadores IC', stock: 400, category: 'Anotadores', iconName: 'pencil' }, { name: 'Anotadores CCAP', stock: 400, category: 'Anotadores', iconName: 'pencil' }, { name: 'Cuadernos IC', stock: 200, category: 'Cuadernos', iconName: 'notebook' }, { name: 'Cuadernos CCAP', stock: 200, category: 'Cuadernos', iconName: 'notebook' }, { name: 'Recursos Humanos', stock: 500, iconName: 'users', iconBgColor: '#b388c2', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Analista de Sistemas', stock: 500, iconName: 'laptop', iconBgColor: '#00b1e1', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Higiene y Seguridad Laboral', stock: 500, iconName: 'hard-hat', iconBgColor: '#f4c01e', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Administración de Empresas', stock: 500, iconName: 'briefcase', iconBgColor: '#8da248', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Marketing', stock: 500, iconName: 'megaphone', iconBgColor: '#fa5d0f', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Desarrollo Web y Aplicaciones Digitales', stock: 500, iconName: 'code-2', iconBgColor: '#a8927d', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Gestión Inmobiliaria', stock: 500, iconName: 'home', iconBgColor: '#bb242a', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Ciencia de Datos e IA', stock: 500, iconName: 'brain-circuit', iconBgColor: '#2d4693', iconColor: '#ffffff', category: 'Folletería' } ];
+        const initialCategories = [ { name: 'Folletería' }, { name: 'Cuadernos' }, { name: 'Carpetas' }, { name: 'Anotadores' }, { name: 'Institucional' }, { name: 'Golosinas', iconName: 'candy'} ];
+        const initialProducts = [ { name: 'Folletería institucional', stock: 1000, category: 'Folletería', iconName: 'file-text' }, { name: 'Dossier institucional', stock: 300, category: 'Institucional', iconName: 'book-open' }, { name: 'Carpetas', stock: 800, category: 'Carpetas', iconName: 'folder' }, { name: 'Anotadores IC', stock: 400, category: 'Anotadores', iconName: 'pencil' }, { name: 'Anotadores CCAP', stock: 400, category: 'Anotadores', iconName: 'pencil' }, { name: 'Cuadernos IC', stock: 200, category: 'Cuadernos', iconName: 'notebook' }, { name: 'Cuadernos CCAP', stock: 200, category: 'Cuadernos', iconName: 'notebook' }, { name: 'Recursos Humanos', stock: 500, iconName: 'users', iconBgColor: '#b388c2', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Analista de Sistemas', stock: 500, iconName: 'laptop', iconBgColor: '#00b1e1', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Higiene y Seguridad Laboral', stock: 500, iconName: 'hard-hat', iconBgColor: '#f4c01e', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Administración de Empresas', stock: 500, iconName: 'briefcase', iconBgColor: '#8da248', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Marketing', stock: 500, iconName: 'megaphone', iconBgColor: '#fa5d0f', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Desarrollo Web y Aplicaciones Digitales', stock: 500, iconName: 'code-2', iconBgColor: '#a8927d', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Gestión Inmobiliaria', stock: 500, iconName: 'home', iconBgColor: '#bb242a', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Ciencia de Datos e IA', stock: 500, iconName: 'brain-circuit', iconBgColor: '#2d4693', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Caramelos', stock: 1000, category: 'Golosinas', iconName: 'candy', unit: 'bolsa_200'} ];
         const initialPeople = [{ name: 'Lucas Abraham' }, { name: 'Juan Cruz Darré' }, { name: 'Gonzalo Moreno' }];
         
         async function seedData() {
@@ -356,22 +395,51 @@
             container.innerHTML = categoriesCache.map(category => {
                 const productsInCategory = productsCache.filter(p => p.categoryId === category.id);
                 const isExpanded = expandedCategories.has(category.id);
+
+                const sortConfig = categorySortConfigs[category.id] || { key: 'name', direction: 'asc' };
+                productsInCategory.sort((a, b) => {
+                    let comparison = 0;
+                    if (sortConfig.key === 'name') {
+                        comparison = a.name.localeCompare(b.name);
+                    } else { // stock
+                        comparison = a.stock - b.stock;
+                    }
+                    return sortConfig.direction === 'asc' ? comparison : -comparison;
+                });
+
                 return `
                 <div class="rounded-lg shadow-md overflow-hidden">
-                    <div class="category-header flex justify-between items-center p-4 cursor-pointer bg-blue-800 text-white" data-id="${category.id}">
+                    <div class="category-header flex justify-between items-center p-4 cursor-pointer ${isExpanded ? 'bg-slate-600' : 'bg-slate-900'} text-white transition-colors" data-id="${category.id}">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center bg-white bg-opacity-20 flex-shrink-0">
-                                <i data-lucide="${category.iconName || 'folder'}"></i>
-                            </div>
                             <h3 class="font-bold text-lg">${category.name}</h3>
-                            <span class="text-sm bg-white text-blue-800 font-semibold px-2 py-0.5 rounded-full flex-shrink-0">${productsInCategory.length}</span>
+                            <span class="text-sm bg-white text-slate-800 font-semibold px-2 py-0.5 rounded-full flex-shrink-0">${productsInCategory.length}</span>
                         </div>
                         <i data-lucide="chevron-down" class="arrow-icon h-6 w-6 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
                     </div>
-                    <div class="products-list accordion-content bg-white ${isExpanded ? 'open' : ''}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
+                    <div class="products-list accordion-content ${isExpanded ? 'open bg-slate-50' : 'bg-white'}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
+                        <div class="p-2 border-b border-gray-200 flex items-center justify-end gap-2 text-xs">
+                            <span>Ordenar por:</span>
+                            <button class="sort-btn p-1 rounded ${sortConfig.key === 'name' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200'}" data-category-id="${category.id}" data-key="name">Nombre</button>
+                            <button class="sort-btn p-1 rounded ${sortConfig.key === 'stock' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200'}" data-category-id="${category.id}" data-key="stock">Stock</button>
+                        </div>
                         ${productsInCategory.length > 0 ? productsInCategory.map(p => {
+                             const unit = p.unit || 'unidades';
+                             let lowStock = false, criticalStock = false;
+
+                             if (unit === 'unidades') {
+                                criticalStock = p.stock < 50;
+                                lowStock = p.stock < 100;
+                             } else {
+                                criticalStock = p.stock < 100;
+                                lowStock = p.stock < 200;
+                             }
+
                              let rowClass = 'border-t border-gray-200 flex items-center p-3 gap-4';
-                             if (p.stock < 50) rowClass += ' bg-red-50'; else if (p.stock < 100) rowClass += ' bg-yellow-50';
+                             if (criticalStock) rowClass += ' bg-red-200 border-l-4 border-red-500'; 
+                             else if (lowStock) rowClass += ' bg-yellow-100 border-l-4 border-yellow-500';
+                             
+                             const unitLabel = unit.replace('_', ' x');
+
                              return `
                              <div class="${rowClass}">
                                 <div class="w-12 h-12 flex-shrink-0 rounded-lg flex items-center justify-center" style="background-color: ${p.iconBgColor || '#e5e7eb'};">
@@ -379,7 +447,7 @@
                                 </div>
                                  <div class="flex-grow min-w-0">
                                      <p class="font-semibold truncate">${p.name}</p>
-                                     <p class="text-2xl font-bold ${p.stock < 50 ? 'text-red-700' : 'text-gray-800'}">${p.stock} <span class="text-sm font-normal text-gray-500">en stock</span></p>
+                                     <p class="text-2xl font-bold ${criticalStock ? 'text-red-700 font-extrabold' : 'text-gray-800'}">${p.stock} <span class="text-sm font-normal text-gray-500">${unitLabel}</span></p>
                                  </div>
                                  <div class="flex flex-col gap-1.5 flex-shrink-0">
                                      <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 flex items-center justify-center"><i data-lucide="pencil" class="h-4 w-4"></i></button>
@@ -400,12 +468,15 @@
                 const isEntry = mov.type === 'entry';
                 const headerColor = isEntry ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900';
                 const isExpanded = expandedMovements.has(mov.id);
+                const dateField = mov.movementDate || mov.timestamp;
+                const dateToShow = dateField ? new Date(dateField.seconds * 1000).toLocaleDateString() : 'N/A';
+
                 return `
                     <div class="movement-item rounded-lg border overflow-hidden">
                         <div class="movement-header flex justify-between items-center p-2 cursor-pointer ${headerColor}" data-id="${mov.id}">
                             <p class="font-bold text-sm truncate pr-2">${mov.reason || 'Movimiento'}</p>
                             <div class="flex items-center gap-2">
-                                <p class="text-xs font-mono">${new Date(mov.timestamp.seconds * 1000).toLocaleDateString()}</p>
+                                <p class="text-xs font-mono">${dateToShow}</p>
                                 <i data-lucide="chevron-down" class="arrow-icon h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
                             </div>
                         </div>
@@ -436,20 +507,19 @@
             lucide.createIcons();
         }
         
-        function renderMovementForm(products, formType, currentItems = []) {
+        function renderMovementForm(formType) {
             const container = document.getElementById(`${formType}-items-container`);
             const searchInput = document.getElementById(`${formType}-search`);
             const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
             
-            const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm));
+            const filtered = productsCache.filter(p => p.name.toLowerCase().includes(searchTerm));
             
             container.innerHTML = filtered.length === 0 ? `<p class="text-center text-gray-500 py-4">No se encontraron productos.</p>` : filtered.map(p => {
-                const currentItem = currentItems.find(item => item.productId === p.id || item.productName === p.name);
-                const quantity = currentItem ? currentItem.quantity : '';
+                const quantity = currentMovementQuantities.get(p.id) || '';
                 return `
                 <div class="grid grid-cols-3 gap-4 items-center">
                     <label for="${formType}-${p.id}" class="col-span-2 text-gray-700">${p.name} (Stock: ${p.stock})</label>
-                    <input type="number" value="${quantity}" id="${formType}-${p.id}" name="${p.id}" min="0" placeholder="0" class="col-span-1 p-2 border border-gray-300 rounded-lg w-full">
+                    <input type="number" value="${quantity}" data-product-id="${p.id}" min="0" placeholder="0" class="movement-quantity-input col-span-1 p-2 border border-gray-300 rounded-lg w-full">
                 </div>
                 `
             }).join('');
@@ -495,10 +565,7 @@
                     showAlert('El nombre de la nueva categoría no puede estar vacío.');
                     return;
                 }
-                const newCatRef = await addDoc(categoriesCollection, {
-                    name: newCategoryName,
-                    iconName: document.getElementById('new-category-icon-name').value
-                });
+                const newCatRef = await addDoc(categoriesCollection, { name: newCategoryName });
                 categoryId = newCatRef.id;
             } else if (!categoryId) {
                 showAlert('Por favor, selecciona una categoría.');
@@ -512,6 +579,7 @@
                     iconName: document.getElementById('add-product-icon-name').value,
                     iconBgColor: document.getElementById('add-product-icon-bg').value,
                     iconColor: document.getElementById('add-product-icon-color').value,
+                    unit: document.getElementById('add-product-unit').value,
                     createdBy: responsible,
                     categoryId: categoryId
                 };
@@ -533,6 +601,7 @@
                 iconName: document.getElementById('adjust-product-icon-name').value,
                 iconBgColor: document.getElementById('adjust-product-icon-bg').value,
                 iconColor: document.getElementById('adjust-product-icon-color').value,
+                unit: document.getElementById('adjust-product-unit').value,
                 categoryId: document.getElementById('adjust-product-category').value
             };
             await updateDoc(doc(productsCollection, id), updatedData);
@@ -550,11 +619,9 @@
             }
 
             const movementItems = [];
-            const container = document.getElementById(`${formType}-items-container`);
-            container.querySelectorAll('input[type="number"]').forEach(input => {
-                const quantity = parseInt(input.value, 10);
+            currentMovementQuantities.forEach((quantity, productId) => {
                 if (quantity > 0) {
-                    const product = productsCache.find(p => p.id === input.name);
+                    const product = productsCache.find(p => p.id === productId);
                     const stockBefore = product.stock;
                     const stockAfter = isExit ? stockBefore - quantity : stockBefore + quantity;
                     movementItems.push({ 
@@ -573,13 +640,17 @@
                      batch.update(doc(productsCollection, item.productId), { stock: item.stockAfter });
                 });
                 
-                const reason = isExit ? document.getElementById('exit-reason').value : document.getElementById('entry-reason').value;
-                const movementData = { items: movementItems, timestamp: Timestamp.now(), type: isExit ? 'exit' : 'entry', responsible, reason };
+                const reason = form.querySelector(`#${formType}-reason`).value;
+                const dateString = form.querySelector(`#${formType}-date`).value;
+                const movementDate = Timestamp.fromDate(new Date(dateString + 'T00:00:00'));
+
+                const movementData = { items: movementItems, movementDate, type: isExit ? 'exit' : 'entry', responsible, reason };
                 batch.set(doc(movementsCollection), movementData);
                 
                 await batch.commit();
             }
             form.reset();
+            currentMovementQuantities.clear();
             closeModal(isExit ? modals.registerExit : modals.registerEntry);
         }
 
@@ -591,12 +662,13 @@
             const originalItems = JSON.parse(form.querySelector('#original-movement-items').value);
             const responsible = form.querySelector('.responsible-select').value;
             const reason = form.querySelector('#edit-movement-reason').value;
+            const dateString = form.querySelector('#edit-movement-date').value;
+            const movementDate = Timestamp.fromDate(new Date(dateString + 'T00:00:00'));
 
             const newItems = [];
-            form.querySelector('#edit-movement-items-container').querySelectorAll('input[type="number"]').forEach(input => {
-                const quantity = parseInt(input.value, 10);
-                if (quantity > 0) {
-                    const product = productsCache.find(p => p.id === input.name);
+            currentMovementQuantities.forEach((quantity, productId) => {
+                 if (quantity > 0) {
+                    const product = productsCache.find(p => p.id === productId);
                     newItems.push({ productId: product.id, productName: product.name, quantity });
                 }
             });
@@ -627,34 +699,36 @@
                 const originalItem = originalItems.find(oi => oi.productId === item.productId);
                 let stockBefore = product ? product.stock : (originalItem ? originalItem.stockBefore : 0);
                 
-                // Recalculate stockBefore based on the current state and the change reversal
                 const originalChange = originalItems.find(oi => oi.productId === item.productId)?.quantity || 0;
-                if (movementType === 'exit') {
-                    stockBefore += originalChange;
-                } else {
-                    stockBefore -= originalChange;
-                }
+                if (movementType === 'exit') stockBefore += originalChange;
+                else stockBefore -= originalChange;
 
                 const stockAfter = movementType === 'exit' ? stockBefore - item.quantity : stockBefore + item.quantity;
                 newItemsWithStock.push({...item, stockBefore, stockAfter});
             }
 
-            const updatedMovementData = { items: newItemsWithStock, responsible, reason, timestamp: Timestamp.now(), type: movementType };
+            const updatedMovementData = { items: newItemsWithStock, responsible, reason, movementDate, type: movementType };
             batch.update(doc(movementsCollection, movementId), updatedMovementData);
 
             await batch.commit();
+            currentMovementQuantities.clear();
             closeModal(modals.editMovement);
         });
 
         function exportToExcel() {
             const stockData = productsCache.map(p => {
                 const category = categoriesCache.find(c => c.id === p.categoryId);
-                return { 'Categoría': category ? category.name : 'N/A', 'Producto': p.name, 'Stock Actual': p.stock };
+                return { 'Categoría': category ? category.name : 'N/A', 'Producto': p.name, 'Stock Actual': p.stock, 'Unidad': p.unit || 'unidades' };
             });
             const stockSheet = XLSX.utils.json_to_sheet(stockData);
-            stockSheet['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 15 }];
+            stockSheet['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 15 }, { wch: 15 }];
             
-            const historyData = movementsCache.flatMap(mov => mov.items.map(item => ({ 'Motivo/Evento': mov.reason, 'Responsable': mov.responsible, 'Fecha': new Date(mov.timestamp.seconds * 1000).toLocaleString(), 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity, 'Stock Antes': item.stockBefore, 'Stock Después': item.stockAfter })));
+            const historyData = movementsCache.flatMap(mov => mov.items.map(item => {
+                const dateField = mov.movementDate || mov.timestamp;
+                const dateString = dateField ? new Date(dateField.seconds * 1000).toLocaleDateString() : 'N/A';
+                return { 'Motivo/Evento': mov.reason, 'Responsable': mov.responsible, 'Fecha': dateString, 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity, 'Stock Antes': item.stockBefore, 'Stock Después': item.stockAfter }
+            }));
+
             const historySheet = XLSX.utils.json_to_sheet(historyData);
             historySheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
 
@@ -669,6 +743,24 @@
             document.getElementById('new-category-fields').classList.toggle('hidden', !isNew);
             document.getElementById('product-fields').style.display = isNew ? 'none' : 'block';
         });
+
+        ['entry', 'exit', 'edit-movement'].forEach(formType => {
+            const container = document.getElementById(`${formType}-items-container`);
+            if (container) {
+                container.addEventListener('input', e => {
+                    if (e.target.classList.contains('movement-quantity-input')) {
+                        const productId = e.target.dataset.productId;
+                        const quantity = parseInt(e.target.value, 10);
+                        if (quantity > 0) {
+                            currentMovementQuantities.set(productId, quantity);
+                        } else {
+                            currentMovementQuantities.delete(productId);
+                        }
+                    }
+                });
+            }
+        });
+
         document.getElementById('register-exit-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'exit'));
         document.getElementById('register-entry-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'entry'));
         document.addEventListener('click', (e) => {
@@ -691,11 +783,21 @@
                 } else {
                     expandedCategories.add(categoryId);
                 }
-                const content = catHeader.nextElementSibling;
-                const arrow = catHeader.querySelector('.arrow-icon');
-                const isOpen = content.classList.toggle('open');
-                arrow.classList.toggle('rotate-180', isOpen);
-                content.style.maxHeight = isOpen ? content.scrollHeight + "px" : '0px';
+                renderInventory();
+                return;
+            }
+
+            const sortBtn = e.target.closest('.sort-btn');
+            if (sortBtn) {
+                const categoryId = sortBtn.dataset.categoryId;
+                const key = sortBtn.dataset.key;
+                const currentConfig = categorySortConfigs[categoryId] || { key: 'name', direction: 'asc' };
+                if (currentConfig.key === key) {
+                    categorySortConfigs[categoryId].direction = currentConfig.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    categorySortConfigs[categoryId] = { key: key, direction: 'asc' };
+                }
+                renderInventory();
             }
         });
 
@@ -708,22 +810,25 @@
                 } else {
                     expandedMovements.add(movementId);
                 }
-                 const content = movHeader.nextElementSibling;
-                 const arrow = movHeader.querySelector('.arrow-icon');
-                 const isOpen = content.classList.toggle('open');
-                 arrow.classList.toggle('rotate-180', isOpen);
-                 content.style.maxHeight = isOpen ? content.scrollHeight + "px" : '0px';
+                 renderMovements();
              }
 
              const editBtn = e.target.closest('.edit-movement-btn');
              if(editBtn) {
                 const movement = movementsCache.find(m => m.id === editBtn.dataset.id);
+                currentMovementQuantities.clear();
+                movement.items.forEach(item => currentMovementQuantities.set(item.productId, item.quantity));
+
                 document.getElementById('edit-movement-id').value = movement.id;
                 document.getElementById('edit-movement-type').value = movement.type;
                 document.getElementById('original-movement-items').value = JSON.stringify(movement.items);
                 document.getElementById('edit-movement-reason').value = movement.reason;
+                const dateField = movement.movementDate || movement.timestamp;
+                const date = dateField ? new Date(dateField.seconds * 1000).toISOString().split('T')[0] : getTodayDateString();
+                document.getElementById('edit-movement-date').value = date;
+
                 renderResponsibleSection(modals.editMovement.querySelector('.responsible-section-container'), movement.responsible);
-                renderMovementForm(productsCache, 'edit-movement', movement.items);
+                renderMovementForm('edit-movement');
                 openModal(modals.editMovement);
              }
 
@@ -757,8 +862,8 @@
                 productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
                 renderInventory(); 
             });
-            onSnapshot(query(movementsCollection), snap => {
-                movementsCache = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+            onSnapshot(query(movementsCollection, orderBy("movementDate", "desc")), snap => {
+                movementsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderMovements();
             });
             onSnapshot(peopleCollection, snap => {
@@ -779,6 +884,7 @@
                     document.getElementById('adjust-product-icon-name').value = product.iconName || '';
                     document.getElementById('adjust-product-icon-bg').value = product.iconBgColor || '#e5e7eb';
                     document.getElementById('adjust-product-icon-color').value = product.iconColor || '#1f2937';
+                    document.getElementById('adjust-product-unit').value = product.unit || 'unidades';
                     document.getElementById('adjust-product-category').value = product.categoryId;
                     openModal(modals.adjustStock);
                 }
@@ -790,12 +896,9 @@
             });
 
             document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
-            document.getElementById('exit-search').addEventListener('input', (e) => renderMovementForm(productsCache, 'exit'));
-            document.getElementById('entry-search').addEventListener('input', (e) => renderMovementForm(productsCache, 'entry'));
-            document.getElementById('edit-movement-search').addEventListener('input', (e) => {
-                const movement = movementsCache.find(m => m.id === document.getElementById('edit-movement-id').value);
-                const currentItems = movement ? movement.items : [];
-                renderMovementForm(productsCache, 'edit-movement', currentItems);
+            ['entry', 'exit', 'edit-movement'].forEach(type => {
+                const searchInput = document.getElementById(`${type}-search`);
+                if (searchInput) searchInput.addEventListener('input', () => renderMovementForm(type));
             });
             
             lucide.createIcons();
