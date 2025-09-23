@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Inventario y Stock</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Librería para generar archivos Excel (.xlsx) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; z-index: 50; }
         .modal:not(.is-open) { opacity: 0; visibility: hidden; }
         .modal.is-open { opacity: 1; visibility: visible; }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: none; border-radius: 0.375rem; }
-        th span { display: inline-block; width: 1em; }
         .accordion-content {
             max-height: 0;
             overflow: hidden;
@@ -29,9 +29,12 @@
 <body class="bg-gray-100 text-gray-800">
 
     <div class="container mx-auto p-4 md:p-8">
-        <header class="bg-blue-700 text-white p-6 md:p-8 rounded-2xl shadow-lg mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold">Sistema de Control de Inventario</h1>
-            <p class="text-blue-200 mt-2">Gestiona el stock de tu material institucional de forma centralizada.</p>
+        <header class="bg-blue-700 text-white p-4 md:p-6 rounded-2xl shadow-lg mb-8 flex items-center gap-4">
+            <img src="logoic.png" alt="Logo" class="h-12 w-12 md:h-16 md:w-16 object-contain">
+            <div>
+                <h1 class="text-2xl md:text-4xl font-bold">Sistema de Control de Inventario</h1>
+                <p class="text-blue-200 mt-1">Gestiona el stock de tu material institucional de forma centralizada.</p>
+            </div>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -53,8 +56,8 @@
                         </button>
                     </div>
                 </div>
-                <div id="inventory-container" class="space-y-2">
-                    <p class="text-center py-8 text-gray-500">Cargando categorías...</p>
+                <div id="inventory-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <p class="text-center py-8 text-gray-500 md:col-span-2">Cargando categorías...</p>
                 </div>
             </div>
 
@@ -67,10 +70,8 @@
         </main>
         
         <footer class="text-center mt-8">
-            <button id="export-excel-btn" class="bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-900 transition duration-300 flex items-center gap-2 mx-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+            <button id="export-excel-btn" class="bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-800 transition duration-300 flex items-center gap-3 mx-auto">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M17 3H7C4.79086 3 3 4.79086 3 7V17C3 19.2091 4.79086 21 7 21H17C19.2091 21 21 19.2091 21 17V7C21 4.79086 19.2091 3 17 3ZM7 1C3.13401 1 0 4.13401 0 8V16C0 19.866 3.13401 23 7 23H17C20.866 23 24 19.866 24 16V8C24 4.13401 20.866 1 17 1H7Z" fill="white"/><path d="M14.5303 10.5303C14.8232 10.2374 14.8232 9.76256 14.5303 9.46967C14.2374 9.17678 13.7626 9.17678 13.4697 9.46967L10.5 12.4393L8.53033 10.4697C8.23744 10.1768 7.76256 10.1768 7.46967 10.4697C7.17678 10.7626 7.17678 11.2374 7.46967 11.5303L9.96967 14.0303C10.2626 14.3232 10.7374 14.3232 11.0303 14.0303L14.5303 10.5303Z" fill="white"/></svg>
                 Descargar Reporte en Excel
             </button>
         </footer>
@@ -79,28 +80,27 @@
     <!-- Modals -->
     <div id="add-product-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
-             <h3 class="text-2xl font-semibold mb-6">Agregar Nuevo Producto</h3>
+             <h3 class="text-2xl font-semibold mb-6">Agregar Nuevo Producto/Categoría</h3>
             <form id="add-product-form" class="space-y-4">
-                <input type="text" id="add-product-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
-                
-                <!-- Category Selection -->
                 <div>
-                    <label for="add-product-category" class="block text-gray-700 font-medium mb-2">Categoría</label>
+                    <label class="block text-gray-700 font-medium mb-2">Categoría</label>
                     <select id="add-product-category" required class="w-full p-3 border border-gray-300 rounded-lg">
                         <option value="">Seleccionar categoría...</option>
-                        <!-- Options will be populated by JS -->
                         <option value="new">-- Crear Nueva Categoría --</option>
                     </select>
                 </div>
-                <div id="new-category-fields" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-lg">
+                <div id="new-category-fields" class="hidden space-y-4 border p-4 rounded-lg">
                     <input type="text" id="new-category-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre Nueva Categoría">
-                    <input type="text" id="new-category-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-2xl" placeholder="Emoji 📂">
+                    <input type="text" id="new-category-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-xl" placeholder="Emoji para la Categoría 📂">
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <input type="number" id="add-initial-stock" min="0" value="0" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
-                    <input type="text" id="add-product-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-2xl" placeholder="Emoji Producto 📦">
-                    <input type="color" id="add-product-color" value="#ffffff" class="w-full h-[46px] p-1 border border-gray-300 rounded-lg cursor-pointer">
+                <div id="product-fields" class="space-y-4 border p-4 rounded-lg">
+                    <input type="text" id="add-product-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <input type="number" id="add-initial-stock" min="0" value="0" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
+                        <input type="text" id="add-product-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-xl" placeholder="Emoji Producto 📦">
+                        <input type="color" id="add-product-color" value="#ffffff" class="w-full h-[46px] p-1 border border-gray-300 rounded-lg cursor-pointer">
+                    </div>
                 </div>
                 <div class="responsible-section-container"></div>
                 <div class="flex justify-end space-x-4">
@@ -112,23 +112,23 @@
     </div>
     
     <div id="edit-movement-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
-            <h3 class="text-2xl font-semibold mb-6">Editar Movimiento</h3>
-            <form id="edit-movement-form" class="space-y-4">
-                <input type="hidden" id="edit-movement-id">
-                <input type="hidden" id="edit-movement-type">
-                <input type="hidden" id="original-movement-items">
-                <input type="text" id="edit-movement-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo o Evento">
-                <input type="text" id="edit-movement-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
-                <div id="edit-movement-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
-                <div class="responsible-section-container"></div>
-                <div class="flex justify-end space-x-4 mt-4">
-                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold">Actualizar Movimiento</button>
-                </div>
-            </form>
-        </div>
-    </div>
+         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
+             <h3 class="text-2xl font-semibold mb-6">Editar Movimiento</h3>
+             <form id="edit-movement-form" class="space-y-4">
+                 <input type="hidden" id="edit-movement-id">
+                 <input type="hidden" id="edit-movement-type">
+                 <input type="hidden" id="original-movement-items">
+                 <input type="text" id="edit-movement-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo o Evento">
+                 <input type="text" id="edit-movement-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
+                 <div id="edit-movement-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
+                 <div class="responsible-section-container"></div>
+                 <div class="flex justify-end space-x-4 mt-4">
+                     <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                     <button type="submit" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold">Actualizar Movimiento</button>
+                 </div>
+             </form>
+         </div>
+     </div>
     
     <div id="register-entry-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
@@ -174,7 +174,7 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                      <input type="number" id="new-stock-quantity" min="0" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock">
-                     <input type="text" id="adjust-product-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-2xl" placeholder="Emoji 📦">
+                     <input type="text" id="adjust-product-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-xl" placeholder="Emoji 📦">
                      <input type="color" id="adjust-product-color" class="w-full h-[46px] p-1 border border-gray-300 rounded-lg cursor-pointer">
                 </div>
                 <div class="flex justify-end space-x-4">
@@ -185,9 +185,27 @@
         </div>
     </div>
 
+    <!-- Custom Alert and Confirm Modals -->
+    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform transition-transform duration-300 scale-95">
+            <p id="alert-message" class="mb-6 text-lg"></p>
+            <button id="alert-ok-btn" class="px-8 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">OK</button>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform transition-transform duration-300 scale-95">
+            <p id="confirm-message" class="mb-6 text-lg"></p>
+            <div class="flex justify-center space-x-4">
+                <button id="confirm-cancel-btn" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                <button id="confirm-ok-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -201,7 +219,6 @@
         };
 
         const appId = firebaseConfig.appId; 
-        const initialAuthToken = null; 
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -215,6 +232,7 @@
         let productsCache = [], peopleCache = [], movementsCache = [], categoriesCache = [];
         let expandedCategories = new Set();
         let expandedMovements = new Set();
+        let confirmCallback = null;
 
         const modals = {
             addProduct: document.getElementById('add-product-modal'),
@@ -222,6 +240,8 @@
             registerExit: document.getElementById('register-exit-modal'),
             adjustStock: document.getElementById('adjust-stock-modal'),
             editMovement: document.getElementById('edit-movement-modal'),
+            alert: document.getElementById('alert-modal'),
+            confirm: document.getElementById('confirm-modal'),
         };
 
         const openModal = (modal) => {
@@ -233,6 +253,28 @@
             modal.querySelector('div').classList.add('scale-95');
             setTimeout(() => modal.classList.remove('is-open'), 300);
         };
+
+        function showAlert(message) {
+            modals.alert.querySelector('#alert-message').textContent = message;
+            openModal(modals.alert);
+        }
+
+        function showConfirm(message, callback) {
+            confirmCallback = callback;
+            modals.confirm.querySelector('#confirm-message').textContent = message;
+            openModal(modals.confirm);
+        }
+
+        document.getElementById('alert-ok-btn').addEventListener('click', () => closeModal(modals.alert));
+        document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+            confirmCallback = null;
+            closeModal(modals.confirm);
+        });
+        document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            confirmCallback = null;
+            closeModal(modals.confirm);
+        });
         
         document.getElementById('open-add-product-modal').addEventListener('click', () => openModal(modals.addProduct));
         document.getElementById('open-register-entry-modal').addEventListener('click', () => { renderMovementForm(productsCache, 'entry'); openModal(modals.registerEntry); });
@@ -281,39 +323,38 @@
         function renderInventory() {
             const container = document.getElementById('inventory-container');
             if (categoriesCache.length === 0) {
-                 container.innerHTML = `<p class="text-center py-8 text-gray-500">No hay categorías. Agrega un producto para empezar.</p>`;
+                 container.innerHTML = `<p class="text-center py-8 text-gray-500 md:col-span-2">No hay categorías. Agrega un producto para empezar.</p>`;
                  return;
             }
             container.innerHTML = categoriesCache.map(category => {
                 const productsInCategory = productsCache.filter(p => p.categoryId === category.id);
                 const isExpanded = expandedCategories.has(category.id);
                 return `
-                <div class="bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="category-header flex justify-between items-center p-3 cursor-pointer" data-id="${category.id}">
+                <div class="rounded-lg shadow-md overflow-hidden">
+                    <div class="category-header flex justify-between items-center p-4 cursor-pointer bg-blue-700 text-white" data-id="${category.id}">
                         <div class="flex items-center gap-3">
-                            <span class="text-xl">${category.emoji || '📁'}</span>
-                            <h3 class="font-bold text-lg text-gray-800">${category.name}</h3>
-                            <span class="text-sm bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded-full">${productsInCategory.length}</span>
+                            <span class="text-2xl">${category.emoji || '📁'}</span>
+                            <h3 class="font-bold text-lg">${category.name}</h3>
+                            <span class="text-sm bg-white text-blue-700 font-semibold px-2 py-0.5 rounded-full">${productsInCategory.length}</span>
                         </div>
-                        <svg class="arrow-icon h-5 w-5 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        <svg class="arrow-icon h-6 w-6 transition-transform ${isExpanded ? 'rotate-180' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     </div>
-                    <div class="products-list accordion-content ${isExpanded ? 'open' : ''}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
+                    <div class="products-list accordion-content bg-white ${isExpanded ? 'open' : ''}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
                         ${productsInCategory.length > 0 ? productsInCategory.map(p => {
-                             let rowClass = 'border-t border-gray-200 flex items-center justify-between p-3 gap-2';
+                             let rowClass = 'border-t border-gray-200 flex items-center justify-between p-3 gap-4';
                              if (p.stock < 50) rowClass += ' bg-red-50'; else if (p.stock < 100) rowClass += ' bg-yellow-50';
                              return `
                              <div class="${rowClass}">
-                                 <div class="flex items-center flex-grow min-w-0">
-                                     <span class="w-8 text-xl text-center flex-shrink-0">${p.emoji || (p.color && p.color !== '#ffffff' ? `<span class="inline-block w-3 h-3 rounded-full" style="background-color: ${p.color};"></span>` : '')}</span>
-                                     <span class="font-medium truncate ml-2">${p.name}</span>
+                                <div class="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center text-3xl">
+                                    ${p.emoji || (p.color && p.color !== '#ffffff' ? `<span class="inline-block w-6 h-6 rounded-full" style="background-color: ${p.color};"></span>` : '📦')}
+                                </div>
+                                 <div class="flex-grow min-w-0">
+                                     <p class="font-semibold truncate">${p.name}</p>
+                                     <p class="text-2xl font-bold ${p.stock < 50 ? 'text-red-700' : 'text-gray-800'}">${p.stock} <span class="text-sm font-normal text-gray-500">en stock</span></p>
                                  </div>
-                                 <div class="text-center flex-shrink-0">
-                                     <p class="text-lg font-bold ${p.stock < 50 ? 'text-red-700' : 'text-gray-800'}">${p.stock}</p>
-                                     <p class="text-xs text-gray-500">en stock</p>
-                                 </div>
-                                 <div class="flex gap-2 flex-shrink-0">
-                                     <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 text-sm font-semibold">Editar</button>
-                                     <button data-id="${p.id}" class="delete-product-btn bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 text-sm font-semibold">Eliminar</button>
+                                 <div class="flex flex-col gap-1.5 flex-shrink-0">
+                                     <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 flex items-center justify-center"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button>
+                                     <button data-id="${p.id}" class="delete-product-btn bg-red-500 text-white p-2 rounded-md hover:bg-red-600 flex items-center justify-center"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
                                  </div>
                              </div>`;
                         }).join('') : '<p class="text-center text-gray-500 p-4 border-t">No hay productos en esta categoría.</p>'}
@@ -409,33 +450,46 @@
             e.preventDefault();
             const form = e.target;
             const responsible = form.querySelector('.responsible-select').value;
-            if (!responsible) { alert('Por favor, selecciona un responsable.'); return; }
+            if (!responsible) {
+                showAlert('Por favor, selecciona un responsable.');
+                return;
+            }
             
             let categoryId = document.getElementById('add-product-category').value;
+            const productName = document.getElementById('add-product-name').value.trim();
+            const newCategoryName = document.getElementById('new-category-name').value.trim();
+
             if (categoryId === 'new') {
-                const newName = document.getElementById('new-category-name').value.trim();
-                if (!newName) { alert('El nombre de la nueva categoría no puede estar vacío.'); return; }
+                if (!newCategoryName) {
+                    showAlert('El nombre de la nueva categoría no puede estar vacío.');
+                    return;
+                }
                 const newCatRef = await addDoc(categoriesCollection, {
-                    name: newName,
+                    name: newCategoryName,
                     emoji: document.getElementById('new-category-emoji').value
                 });
                 categoryId = newCatRef.id;
             } else if (!categoryId) {
-                alert('Por favor, selecciona una categoría.'); return;
+                showAlert('Por favor, selecciona una categoría.');
+                return;
             }
 
-            const productData = {
-                name: document.getElementById('add-product-name').value,
-                stock: parseInt(document.getElementById('add-initial-stock').value, 10),
-                emoji: document.getElementById('add-product-emoji').value,
-                color: document.getElementById('add-product-color').value,
-                createdBy: responsible,
-                categoryId: categoryId
-            };
-            if (productData.color === '#ffffff') delete productData.color;
-            await addDoc(productsCollection, productData);
+            if (productName) {
+                const productData = {
+                    name: productName,
+                    stock: parseInt(document.getElementById('add-initial-stock').value, 10),
+                    emoji: document.getElementById('add-product-emoji').value,
+                    color: document.getElementById('add-product-color').value,
+                    createdBy: responsible,
+                    categoryId: categoryId
+                };
+                if (productData.color === '#ffffff') delete productData.color;
+                await addDoc(productsCollection, productData);
+            }
+
             form.reset();
             document.getElementById('new-category-fields').classList.add('hidden');
+            document.getElementById('product-fields').style.display = 'block';
             closeModal(modals.addProduct);
         });
 
@@ -459,7 +513,10 @@
             const isExit = formType.includes('exit');
             const form = e.target;
             const responsible = form.querySelector('.responsible-select').value;
-            if (!responsible) { alert('Por favor, selecciona un responsable.'); return; }
+            if (!responsible) {
+                showAlert('Por favor, selecciona un responsable.');
+                return;
+            }
 
             const movementItems = [];
             const container = document.getElementById(`${formType}-items-container`);
@@ -514,28 +571,35 @@
             });
 
             const stockChanges = new Map();
-
-            // 1. Revert original movement
             originalItems.forEach(item => {
                 const change = movementType === 'exit' ? item.quantity : -item.quantity;
                 stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
             });
-
-            // 2. Apply new movement
             newItems.forEach(item => {
                 const change = movementType === 'exit' ? -item.quantity : item.quantity;
                 stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
             });
             
             const batch = writeBatch(db);
-            stockChanges.forEach((change, productId) => {
-                 const product = productsCache.find(p => p.id === productId);
-                 if(product) {
-                    batch.update(doc(productsCollection, productId), { stock: product.stock + change });
-                 }
-            });
+            const newItemsWithStock = [];
 
-            const updatedMovementData = { items: newItems, responsible, reason, timestamp: Timestamp.now(), type: movementType };
+            for (const [productId, change] of stockChanges.entries()) {
+                const product = productsCache.find(p => p.id === productId);
+                if(product) {
+                    const newStock = product.stock + change;
+                    batch.update(doc(productsCollection, productId), { stock: newStock });
+                }
+            }
+
+            for(const item of newItems) {
+                const product = productsCache.find(p => p.id === item.productId);
+                const originalItem = originalItems.find(oi => oi.productId === item.productId);
+                const stockBefore = originalItem ? originalItem.stockBefore : product.stock;
+                const stockAfter = movementType === 'exit' ? stockBefore - item.quantity : stockBefore + item.quantity;
+                newItemsWithStock.push({...item, stockBefore, stockAfter});
+            }
+
+            const updatedMovementData = { items: newItemsWithStock, responsible, reason, timestamp: Timestamp.now(), type: movementType };
             batch.update(doc(movementsCollection, movementId), updatedMovementData);
 
             await batch.commit();
@@ -561,7 +625,9 @@
         }
 
         document.getElementById('add-product-category').addEventListener('change', (e) => {
-            document.getElementById('new-category-fields').classList.toggle('hidden', e.target.value !== 'new');
+            const isNew = e.target.value === 'new';
+            document.getElementById('new-category-fields').classList.toggle('hidden', !isNew);
+            document.getElementById('product-fields').style.display = isNew ? 'none' : 'block';
         });
         document.getElementById('register-exit-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'exit'));
         document.getElementById('register-entry-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'entry'));
@@ -622,45 +688,45 @@
              }
 
              const deleteBtn = e.target.closest('.delete-movement-btn');
-             if(deleteBtn && confirm('¿Estás seguro? Esta acción revertirá el stock y eliminará el registro permanentemente.')) {
-                const movement = movementsCache.find(m => m.id === deleteBtn.dataset.id);
-                const batch = writeBatch(db);
-                movement.items.forEach(item => {
-                    const product = productsCache.find(p => p.id === item.productId);
-                    if(product) {
-                        const newStock = movement.type === 'exit' ? product.stock + item.quantity : product.stock - item.quantity;
-                        batch.update(doc(productsCollection, item.productId), { stock: newStock });
-                    }
+             if (deleteBtn) {
+                showConfirm('¿Estás seguro? Esta acción revertirá el stock y eliminará el registro permanentemente.', () => {
+                    const movement = movementsCache.find(m => m.id === deleteBtn.dataset.id);
+                    const batch = writeBatch(db);
+                    movement.items.forEach(item => {
+                        const product = productsCache.find(p => p.id === item.productId);
+                        if(product) {
+                            const newStock = movement.type === 'exit' ? product.stock + item.quantity : product.stock - item.quantity;
+                            batch.update(doc(productsCollection, item.productId), { stock: newStock });
+                        }
+                    });
+                    batch.delete(doc(movementsCollection, movement.id));
+                    batch.commit();
                 });
-                batch.delete(doc(movementsCollection, movement.id));
-                batch.commit();
              }
         });
 
         async function main() {
-            onAuthStateChanged(auth, async user => {
-                if (user) {
-                    await seedData();
-                    onSnapshot(query(categoriesCollection), snap => { 
-                        categoriesCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
-                        populateCategoryDropdowns(categoriesCache);
-                        renderInventory();
-                    });
-                    onSnapshot(productsCollection, snap => { 
-                        productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
-                        renderInventory(); 
-                    });
-                    onSnapshot(query(movementsCollection), snap => {
-                        movementsCache = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-                        renderMovements();
-                    });
-                    onSnapshot(peopleCollection, snap => {
-                        peopleCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
-                        document.querySelectorAll('.responsible-section-container').forEach(c => renderResponsibleSection(c));
-                    });
-                }
-            });
             await signInAnonymously(auth);
+            
+            onSnapshot(query(categoriesCollection), snap => { 
+                categoriesCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
+                populateCategoryDropdowns(categoriesCache);
+                renderInventory();
+            });
+            onSnapshot(productsCollection, snap => { 
+                productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+                renderInventory(); 
+            });
+            onSnapshot(query(movementsCollection), snap => {
+                movementsCache = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+                renderMovements();
+            });
+            onSnapshot(peopleCollection, snap => {
+                peopleCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
+                document.querySelectorAll('.responsible-section-container').forEach(c => renderResponsibleSection(c));
+            });
+            
+            await seedData();
             
             document.getElementById('inventory-container').addEventListener('click', (e) => {
                 const adjustBtn = e.target.closest('.adjust-stock-btn');
@@ -675,17 +741,20 @@
                     document.getElementById('adjust-product-category').value = product.categoryId;
                     openModal(modals.adjustStock);
                 }
-                if (deleteBtn && confirm('¿Estás seguro de que quieres eliminar este producto? Esto no afectará los registros históricos.')) {
-                     deleteDoc(doc(productsCollection, deleteBtn.dataset.id));
+                if (deleteBtn) {
+                    showConfirm('¿Estás seguro de que quieres eliminar este producto? Esto no afectará los registros históricos.', () => {
+                        deleteDoc(doc(productsCollection, deleteBtn.dataset.id));
+                    });
                 }
             });
 
             document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
-            document.getElementById('exit-search').addEventListener('input', (e) => renderMovementForm(productsCache.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())), 'exit'));
-            document.getElementById('entry-search').addEventListener('input', (e) => renderMovementForm(productsCache.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())), 'entry'));
+            document.getElementById('exit-search').addEventListener('input', (e) => renderMovementForm(productsCache, 'exit'));
+            document.getElementById('entry-search').addEventListener('input', (e) => renderMovementForm(productsCache, 'entry'));
             document.getElementById('edit-movement-search').addEventListener('input', (e) => {
                 const movement = movementsCache.find(m => m.id === document.getElementById('edit-movement-id').value);
-                renderMovementForm(productsCache.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())), 'edit-movement', movement.items);
+                const currentItems = movement ? movement.items : [];
+                renderMovementForm(productsCache, 'edit-movement', currentItems);
             });
         }
         main();
