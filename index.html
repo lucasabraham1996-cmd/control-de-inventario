@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Inventario y Stock</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Librería para generar archivos Excel (.xlsx) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal:not(.is-open) { opacity: 0; visibility: hidden; }
+        .modal.is-open { opacity: 1; visibility: visible; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 0.375rem; }
+        th span { display: inline-block; width: 1em; }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="bg-blue-700 text-white p-6 md:p-8 rounded-2xl shadow-lg mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold">Sistema de Control de Inventario</h1>
+            <p class="text-blue-200 mt-2">Gestiona el stock de tu material institucional de forma centralizada.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Inventario por Categorías</h2>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="open-add-product-modal" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center gap-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                            Agregar Producto
+                        </button>
+                        <button id="open-register-entry-modal" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-purple-700 transition duration-300 flex items-center gap-2">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L10 14.414l-7.707-7.707A1 1 0 012 6V3a1 1 0 011-1zm0 5.414L9.293 15.707a1 1 0 001.414 0L17 8.414V17a1 1 0 01-1 1H4a1 1 0 01-1-1V8.414z" clip-rule="evenodd" /></svg>
+                            Registrar Entrada
+                        </button>
+                        <button id="open-register-exit-modal" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition duration-300 flex items-center gap-2">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.993.883L4 8v9a1 1 0 001 1h10a1 1 0 001-1V8l-.007-.117A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 011 1v3a1 1 0 11-2 0v-3a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                            Registrar Salida
+                        </button>
+                    </div>
+                </div>
+                <div id="inventory-container" class="space-y-2">
+                    <p class="text-center py-8 text-gray-500">Cargando categorías...</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-6">Historial de Movimientos</h2>
+                <div id="movements-history" class="space-y-2">
+                    <p class="text-center py-8 text-gray-500">No hay movimientos registrados.</p>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-8">
+            <button id="export-excel-btn" class="bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-900 transition duration-300 flex items-center gap-2 mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Descargar Reporte en Excel
+            </button>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-product-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
+             <h3 class="text-2xl font-semibold mb-6">Agregar Nuevo Producto</h3>
+            <form id="add-product-form" class="space-y-4">
+                <input type="text" id="add-product-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
+                
+                <!-- Category Selection -->
+                <div>
+                    <label for="add-product-category" class="block text-gray-700 font-medium mb-2">Categoría</label>
+                    <select id="add-product-category" required class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="">Seleccionar categoría...</option>
+                        <!-- Options will be populated by JS -->
+                        <option value="new">-- Crear Nueva Categoría --</option>
+                    </select>
+                </div>
+                <div id="new-category-fields" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-lg">
+                    <input type="text" id="new-category-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre Nueva Categoría">
+                    <input type="text" id="new-category-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-2xl" placeholder="Emoji 📂">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <input type="number" id="add-initial-stock" min="0" value="0" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
+                    <input type="text" id="add-product-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-2xl" placeholder="Emoji Producto 📦">
+                    <input type="color" id="add-product-color" value="#ffffff" class="w-full h-[46px] p-1 border border-gray-300 rounded-lg cursor-pointer">
+                </div>
+                <div class="responsible-section-container"></div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="register-entry-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
+            <h3 class="text-2xl font-semibold mb-6">Registrar Entrada de Material</h3>
+            <form id="register-entry-form" class="space-y-4">
+                <input type="text" id="entry-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo (Ej: Compra #123)">
+                <input type="text" id="entry-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
+                <div id="entry-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
+                <div class="responsible-section-container"></div>
+                <div class="flex justify-end space-x-4 mt-4">
+                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="register-exit-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
+            <h3 class="text-2xl font-semibold mb-6">Registrar Salida de Material</h3>
+            <form id="register-exit-form" class="space-y-4">
+                <input type="text" id="event-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Evento o Acción">
+                <input type="text" id="exit-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
+                <div id="exit-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
+                <div class="responsible-section-container"></div>
+                <div class="flex justify-end space-x-4 mt-4">
+                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="adjust-stock-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform transition-transform duration-300 scale-95">
+            <h3 class="text-2xl font-semibold mb-6">Editar Producto</h3>
+            <form id="adjust-stock-form" class="space-y-4">
+                <input type="hidden" id="adjust-stock-product-id">
+                <input type="text" id="adjust-product-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
+                 <div>
+                    <label for="adjust-product-category" class="block text-gray-700 font-medium mb-2">Categoría</label>
+                    <select id="adjust-product-category" required class="w-full p-3 border border-gray-300 rounded-lg"></select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                     <input type="number" id="new-stock-quantity" min="0" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock">
+                     <input type="text" id="adjust-product-emoji" class="w-full p-3 border border-gray-300 rounded-lg text-center text-2xl" placeholder="Emoji 📦">
+                     <input type="color" id="adjust-product-color" class="w-full h-[46px] p-1 border border-gray-300 rounded-lg cursor-pointer">
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const productsCollection = collection(db, `/artifacts/${appId}/public/data/products`);
+        const movementsCollection = collection(db, `/artifacts/${appId}/public/data/movements`);
+        const peopleCollection = collection(db, `/artifacts/${appId}/public/data/people`);
+        const categoriesCollection = collection(db, `/artifacts/${appId}/public/data/categories`);
+
+        let productsCache = [], peopleCache = [], movementsCache = [], categoriesCache = [];
+
+        const modals = {
+            addProduct: document.getElementById('add-product-modal'),
+            registerEntry: document.getElementById('register-entry-modal'),
+            registerExit: document.getElementById('register-exit-modal'),
+            adjustStock: document.getElementById('adjust-stock-modal'),
+        };
+
+        const openModal = (modal) => {
+            modal.classList.add('is-open');
+            setTimeout(() => modal.querySelector('div').classList.remove('scale-95'), 10);
+        };
+        const closeModal = (modal) => {
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => modal.classList.remove('is-open'), 300);
+        };
+        
+        document.getElementById('open-add-product-modal').addEventListener('click', () => openModal(modals.addProduct));
+        document.getElementById('open-register-entry-modal').addEventListener('click', () => { renderMovementForm('', 'entry'); openModal(modals.registerEntry); });
+        document.getElementById('open-register-exit-modal').addEventListener('click', () => { renderMovementForm('', 'exit'); openModal(modals.registerExit); });
+        document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
+        
+        const initialCategories = [ { name: 'Folletería', emoji: '📄' }, { name: 'Cuadernos', emoji: '📓' }, { name: 'Carpetas', emoji: '📁' }, { name: 'Anotadores', emoji: '📝' }, { name: 'Institucional', emoji: '🏢' } ];
+        const initialProducts = [ { name: 'Folletería institucional', stock: 1000, category: 'Folletería' }, { name: 'Dossier institucional', stock: 300, category: 'Institucional' }, { name: 'Carpetas', stock: 800, category: 'Carpetas' }, { name: 'Anotadores IC', stock: 400, category: 'Anotadores' }, { name: 'Anotadores CCAP', stock: 400, category: 'Anotadores' }, { name: 'Cuadernos IC', stock: 200, category: 'Cuadernos' }, { name: 'Cuadernos CCAP', stock: 200, category: 'Cuadernos' }, { name: 'Recursos Humanos', stock: 500, color: '#b388c2', category: 'Folletería' }, { name: 'Analista de Sistemas', stock: 500, color: '#00b1e1', category: 'Folletería' }, { name: 'Higiene y Seguridad Laboral', stock: 500, color: '#f4c01e', category: 'Folletería' }, { name: 'Administración de Empresas', stock: 500, color: '#8da248', category: 'Folletería' }, { name: 'Marketing', stock: 500, color: '#fa5d0f', category: 'Folletería' }, { name: 'Desarrollo Web y Aplicaciones Digitales', stock: 500, color: '#a8927d', category: 'Folletería' }, { name: 'Gestión Inmobiliaria', stock: 500, color: '#bb242a', category: 'Folletería' }, { name: 'Ciencia de Datos e IA', stock: 500, color: '#2d4693', category: 'Folletería' } ];
+        const initialPeople = [{ name: 'Lucas Abraham' }, { name: 'Juan Cruz Darré' }, { name: 'Gonzalo Moreno' }];
+        
+        async function seedData() {
+            const catSnap = await getDocs(query(categoriesCollection));
+            if (catSnap.empty) {
+                const batch = writeBatch(db);
+                initialCategories.forEach(item => batch.set(doc(categoriesCollection), item));
+                await batch.commit();
+            }
+
+            const prodSnap = await getDocs(query(productsCollection));
+            if (prodSnap.empty) {
+                const allCats = (await getDocs(query(categoriesCollection))).docs.map(d => ({id: d.id, ...d.data()}));
+                const categoryMap = Object.fromEntries(allCats.map(c => [c.name, c.id]));
+                
+                const batch = writeBatch(db);
+                initialProducts.forEach(p => {
+                    const { category, ...productData } = p;
+                    if(categoryMap[category]) {
+                        productData.categoryId = categoryMap[category];
+                        if (!productData.name.toLowerCase().includes('folletería')) {
+                            productData.name = `Folletería - ${productData.name}`;
+                        }
+                        batch.set(doc(productsCollection), productData);
+                    }
+                });
+                await batch.commit();
+            }
+             const peopleSnap = await getDocs(query(peopleCollection));
+            if (peopleSnap.empty) {
+                const batch = writeBatch(db);
+                initialPeople.forEach(item => batch.set(doc(peopleCollection), item));
+                await batch.commit();
+            }
+        }
+        
+        function renderInventory() {
+            const container = document.getElementById('inventory-container');
+            if (categoriesCache.length === 0) {
+                 container.innerHTML = `<p class="text-center py-8 text-gray-500">No hay categorías. Agrega un producto para empezar.</p>`;
+                 return;
+            }
+
+            container.innerHTML = categoriesCache.map(category => {
+                const productsInCategory = productsCache.filter(p => p.categoryId === category.id);
+                return `
+                <div class="bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="category-header flex justify-between items-center p-3 cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${category.emoji || '📁'}</span>
+                            <h3 class="font-bold text-lg text-gray-800">${category.name}</h3>
+                            <span class="text-sm bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded-full">${productsInCategory.length}</span>
+                        </div>
+                        <svg class="arrow-icon h-5 w-5 text-gray-600 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    </div>
+                    <div class="products-list accordion-content">
+                        ${productsInCategory.length > 0 ? productsInCategory.map(p => {
+                             let rowClass = 'border-t border-gray-200 flex items-center justify-between p-3 gap-2';
+                             if (p.stock < 50) rowClass += ' bg-red-50'; else if (p.stock < 100) rowClass += ' bg-yellow-50';
+                             return `
+                             <div class="${rowClass}">
+                                 <div class="flex items-center flex-grow">
+                                     <span class="w-8 text-xl text-center">${p.emoji || (p.color && p.color !== '#ffffff' ? `<span class="inline-block w-3 h-3 rounded-full" style="background-color: ${p.color};"></span>` : '')}</span>
+                                     <span class="font-medium">${p.name}</span>
+                                 </div>
+                                 <div class="text-center">
+                                     <p class="text-lg font-bold ${p.stock < 50 ? 'text-red-700' : 'text-gray-800'}">${p.stock}</p>
+                                     <p class="text-xs text-gray-500">en stock</p>
+                                 </div>
+                                 <div class="flex gap-2">
+                                     <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 text-sm font-semibold">Editar</button>
+                                     <button data-id="${p.id}" class="delete-product-btn bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 text-sm font-semibold">Eliminar</button>
+                                 </div>
+                             </div>`;
+                        }).join('') : '<p class="text-center text-gray-500 p-4 border-t">No hay productos en esta categoría.</p>'}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        function renderMovements() {
+            const container = document.getElementById('movements-history');
+            container.innerHTML = movementsCache.length === 0 ? `<p class="text-center py-8 text-gray-500">No hay movimientos.</p>` : movementsCache.map(mov => {
+                const isEntry = mov.type === 'entry';
+                const headerColor = isEntry ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900';
+                return `
+                    <div class="movement-item rounded-lg border overflow-hidden">
+                        <div class="movement-header flex justify-between items-center p-2 cursor-pointer ${headerColor}">
+                            <p class="font-bold text-sm truncate pr-2">${mov.reason || mov.event}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-xs font-mono">${new Date(mov.timestamp.seconds * 1000).toLocaleDateString()}</p>
+                                <svg class="arrow-icon h-5 w-5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            </div>
+                        </div>
+                        <div class="movement-details accordion-content bg-white p-3 text-sm">
+                             <p class="text-xs text-gray-500 mb-2">Por: <span class="font-medium text-gray-700">${mov.responsible || 'N/A'}</span></p>
+                             <ul class="list-disc pl-5 text-xs space-y-1">
+                                ${mov.items.map(item => `<li><span class="font-semibold">${item.quantity}</span> x ${item.productName}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderMovementForm(searchTerm = '', type) {
+            const container = document.getElementById(`${type}-items-container`);
+            const filtered = productsCache.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+            container.innerHTML = filtered.length === 0 ? `<p class="text-center text-gray-500 py-4">No se encontraron productos.</p>` : filtered.map(p => `
+                <div class="grid grid-cols-3 gap-4 items-center">
+                    <label for="${type}-${p.id}" class="col-span-2 text-gray-700">${p.name} (Stock: ${p.stock})</label>
+                    <input type="number" id="${type}-${p.id}" name="${p.id}" min="0" placeholder="0" class="col-span-1 p-2 border border-gray-300 rounded-lg w-full">
+                </div>
+            `).join('');
+        }
+
+        function renderResponsibleSection(container) {
+            container.innerHTML = `
+                <div class="border-t pt-4">
+                    <label class="block text-gray-700 font-medium mb-2">Responsable</label>
+                    <div class="flex gap-2">
+                        <select required class="responsible-select w-full p-3 border border-gray-300 rounded-lg">
+                            <option value="">Seleccionar persona...</option>
+                            ${peopleCache.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+                        </select>
+                        <input type="text" class="new-person-input p-3 border border-gray-300 rounded-lg" placeholder="Nueva persona">
+                        <button type="button" class="add-person-btn bg-gray-600 text-white px-4 rounded-lg hover:bg-gray-700 font-bold">+</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function populateCategoryDropdowns(categories) {
+            const optionsHtml = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            document.getElementById('adjust-product-category').innerHTML = optionsHtml;
+            document.getElementById('add-product-category').innerHTML = `<option value="">Seleccionar categoría...</option>${optionsHtml}<option value="new">-- Crear Nueva Categoría --</option>`;
+        }
+        
+        document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const responsible = form.querySelector('.responsible-select').value;
+            if (!responsible) { alert('Por favor, selecciona un responsable.'); return; }
+            
+            let categoryId = document.getElementById('add-product-category').value;
+            if (categoryId === 'new') {
+                const newName = document.getElementById('new-category-name').value.trim();
+                if (!newName) { alert('El nombre de la nueva categoría no puede estar vacío.'); return; }
+                const newCatRef = await addDoc(categoriesCollection, {
+                    name: newName,
+                    emoji: document.getElementById('new-category-emoji').value
+                });
+                categoryId = newCatRef.id;
+            } else if (!categoryId) {
+                alert('Por favor, selecciona una categoría.'); return;
+            }
+
+            const productData = {
+                name: document.getElementById('add-product-name').value,
+                stock: parseInt(document.getElementById('add-initial-stock').value, 10),
+                emoji: document.getElementById('add-product-emoji').value,
+                color: document.getElementById('add-product-color').value,
+                createdBy: responsible,
+                categoryId: categoryId
+            };
+            if (productData.color === '#ffffff') delete productData.color;
+            await addDoc(productsCollection, productData);
+            form.reset();
+            document.getElementById('new-category-fields').classList.add('hidden');
+            closeModal(modals.addProduct);
+        });
+
+        document.getElementById('adjust-stock-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('adjust-stock-product-id').value;
+            const updatedData = {
+                name: document.getElementById('adjust-product-name').value,
+                stock: parseInt(document.getElementById('new-stock-quantity').value, 10),
+                emoji: document.getElementById('adjust-product-emoji').value,
+                color: document.getElementById('adjust-product-color').value,
+                categoryId: document.getElementById('adjust-product-category').value
+            };
+            if (updatedData.color === '#ffffff') delete updatedData.color;
+            await updateDoc(doc(productsCollection, id), updatedData);
+            closeModal(modals.adjustStock);
+        });
+        
+        async function handleMovementSubmit(e, type) {
+            e.preventDefault();
+            const isExit = type === 'exit';
+            const responsible = e.target.querySelector('.responsible-select').value;
+            if (!responsible) { alert('Por favor, selecciona un responsable.'); return; }
+
+            const itemsToUpdate = [], movementItems = [];
+            const container = document.getElementById(`${type}-items-container`);
+            container.querySelectorAll('input[type="number"]').forEach(input => {
+                const quantity = parseInt(input.value, 10);
+                if (quantity > 0) {
+                    const product = productsCache.find(p => p.id === input.name);
+                    itemsToUpdate.push({ ref: doc(productsCollection, product.id), newStock: isExit ? product.stock - quantity : product.stock + quantity });
+                    movementItems.push({ productName: product.name, quantity });
+                }
+            });
+            
+            if (itemsToUpdate.length > 0) {
+                const batch = writeBatch(db);
+                itemsToUpdate.forEach(item => batch.update(item.ref, { stock: item.newStock }));
+                await batch.commit();
+                
+                const movementData = { items: movementItems, timestamp: Timestamp.now(), type, responsible };
+                if (isExit) movementData.event = document.getElementById('event-name').value;
+                else movementData.reason = document.getElementById('entry-reason').value;
+                await addDoc(movementsCollection, movementData);
+            }
+            e.target.reset();
+            closeModal(isExit ? modals.registerExit : modals.registerEntry);
+        }
+
+        function exportToExcel() {
+            const stockData = productsCache.map(p => {
+                const category = categoriesCache.find(c => c.id === p.categoryId);
+                return { 'Categoría': category ? category.name : 'N/A', 'Producto': p.name, 'Stock Actual': p.stock };
+            });
+            const stockSheet = XLSX.utils.json_to_sheet(stockData);
+            stockSheet['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 15 }];
+            
+            const historyData = movementsCache.flatMap(mov => mov.items.map(item => ({ 'Motivo/Evento': mov.reason || mov.event, 'Responsable': mov.responsible, 'Fecha': new Date(mov.timestamp.seconds * 1000).toLocaleString(), 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity })));
+            const historySheet = XLSX.utils.json_to_sheet(historyData);
+            historySheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 10 }];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, stockSheet, "Stock Actual");
+            XLSX.utils.book_append_sheet(wb, historySheet, "Historial de Movimientos");
+            XLSX.writeFile(wb, "Reporte_Inventario.xlsx");
+        }
+
+        document.getElementById('add-product-category').addEventListener('change', (e) => {
+            document.getElementById('new-category-fields').classList.toggle('hidden', e.target.value !== 'new');
+        });
+        document.getElementById('register-exit-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'exit'));
+        document.getElementById('register-entry-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'entry'));
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('add-person-btn')) {
+                const input = e.target.previousElementSibling;
+                const newName = input.value.trim();
+                if (newName && !peopleCache.some(p => p.name === newName)) {
+                    addDoc(peopleCollection, { name: newName });
+                    input.value = '';
+                }
+            }
+            const catHeader = e.target.closest('.category-header');
+            if(catHeader) {
+                const content = catHeader.nextElementSibling;
+                const arrow = catHeader.querySelector('.arrow-icon');
+                arrow.classList.toggle('rotate-180');
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                }
+            }
+            const movHeader = e.target.closest('.movement-header');
+            if(movHeader) {
+                const content = movHeader.nextElementSibling;
+                const arrow = movHeader.querySelector('.arrow-icon');
+                arrow.classList.toggle('rotate-180');
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                }
+            }
+        });
+
+        async function main() {
+            onAuthStateChanged(auth, async user => {
+                if (user) {
+                    await seedData();
+                    onSnapshot(query(categoriesCollection), snap => { 
+                        categoriesCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
+                        populateCategoryDropdowns(categoriesCache);
+                        renderInventory();
+                    });
+                    onSnapshot(productsCollection, snap => { productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderInventory(); });
+                    onSnapshot(query(movementsCollection), snap => {
+                        movementsCache = snap.docs.map(d => ({...d.data()})).sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+                        renderMovements();
+                    });
+                    onSnapshot(peopleCollection, snap => {
+                        peopleCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
+                        document.querySelectorAll('.responsible-section-container').forEach(c => renderResponsibleSection(c));
+                    });
+                }
+            });
+            if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken); else await signInAnonymously(auth);
+            
+            document.getElementById('inventory-container').addEventListener('click', (e) => {
+                const adjustBtn = e.target.closest('.adjust-stock-btn');
+                const deleteBtn = e.target.closest('.delete-product-btn');
+                if (adjustBtn) {
+                    const product = productsCache.find(p => p.id === adjustBtn.dataset.id);
+                    document.getElementById('adjust-stock-product-id').value = product.id;
+                    document.getElementById('adjust-product-name').value = product.name;
+                    document.getElementById('new-stock-quantity').value = product.stock;
+                    document.getElementById('adjust-product-emoji').value = product.emoji || '';
+                    document.getElementById('adjust-product-color').value = product.color || '#ffffff';
+                    document.getElementById('adjust-product-category').value = product.categoryId;
+                    openModal(modals.adjustStock);
+                }
+                if (deleteBtn && confirm('¿Estás seguro de que quieres eliminar este producto? Esto no afectará los registros históricos.')) {
+                     deleteDoc(doc(productsCollection, deleteBtn.dataset.id));
+                }
+            });
+
+            document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+            document.getElementById('exit-search').addEventListener('input', (e) => renderMovementForm(e.target.value, 'exit'));
+            document.getElementById('entry-search').addEventListener('input', (e) => renderMovementForm(e.target.value, 'entry'));
+        }
+        main();
+    </script>
+</body>
+</html>
