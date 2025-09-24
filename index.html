@@ -98,7 +98,7 @@
                 <div id="product-fields" class="space-y-4 border p-4 rounded-lg">
                     <input type="text" id="add-product-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <input type="number" id="add-initial-stock" min="0" value="0" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
+                         <input type="number" id="add-initial-stock" min="0" value="0" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
                         <div>
                             <label class="text-sm">Icono (de <a href="https://lucide.dev/" target="_blank" class="text-blue-600 underline">Lucide</a>)</label>
                             <input type="text" id="add-product-icon-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="package">
@@ -133,6 +133,20 @@
         </div>
     </div>
     
+    <div id="edit-category-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform transition-transform duration-300 scale-95">
+             <h3 class="text-2xl font-semibold mb-6">Editar Categoría</h3>
+            <form id="edit-category-form" class="space-y-4">
+                <input type="hidden" id="edit-category-id">
+                <input type="text" id="edit-category-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre de la Categoría">
+                <div class="flex justify-end space-x-4">
+                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="edit-movement-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
          <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
              <h3 class="text-2xl font-semibold mb-6">Editar Movimiento</h3>
@@ -256,7 +270,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAs_LyHNTXEM40bnFMRVYF0FvAcfY4upJw",
@@ -292,6 +306,7 @@
             registerExit: document.getElementById('register-exit-modal'),
             adjustStock: document.getElementById('adjust-stock-modal'),
             editMovement: document.getElementById('edit-movement-modal'),
+            editCategory: document.getElementById('edit-category-modal'),
             alert: document.getElementById('alert-modal'),
             confirm: document.getElementById('confirm-modal'),
         };
@@ -414,7 +429,11 @@
                             <h3 class="font-bold text-lg">${category.name}</h3>
                             <span class="text-sm bg-white text-slate-800 font-semibold px-2 py-0.5 rounded-full flex-shrink-0">${productsInCategory.length}</span>
                         </div>
-                        <i data-lucide="chevron-down" class="arrow-icon h-6 w-6 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
+                        <div class="flex items-center gap-2">
+                            <button class="edit-category-btn p-1 hover:bg-white/20 rounded-full" data-id="${category.id}"><i data-lucide="pencil" class="h-4 w-4"></i></button>
+                            <button class="delete-category-btn p-1 hover:bg-white/20 rounded-full" data-id="${category.id}"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                            <i data-lucide="chevron-down" class="arrow-icon h-6 w-6 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
+                        </div>
                     </div>
                     <div class="products-list accordion-content ${isExpanded ? 'open bg-slate-50' : 'bg-white'}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
                         <div class="p-2 border-b border-gray-200 flex items-center justify-end gap-2 text-xs">
@@ -424,21 +443,24 @@
                         </div>
                         ${productsInCategory.length > 0 ? productsInCategory.map(p => {
                              const unit = p.unit || 'unidades';
+                             const bagSize = unit.startsWith('bolsa_') ? parseInt(unit.split('_')[1], 10) : 1;
+                             const totalUnits = p.stock * (unit === 'unidades' ? 1 : bagSize);
+
                              let lowStock = false, criticalStock = false;
 
                              if (unit === 'unidades') {
                                 criticalStock = p.stock < 50;
                                 lowStock = p.stock < 100;
                              } else {
-                                criticalStock = p.stock < 100;
-                                lowStock = p.stock < 200;
+                                criticalStock = totalUnits < 100;
+                                lowStock = totalUnits < 200;
                              }
 
                              let rowClass = 'border-t border-gray-200 flex items-center p-3 gap-4';
                              if (criticalStock) rowClass += ' bg-red-200 border-l-4 border-red-500'; 
                              else if (lowStock) rowClass += ' bg-yellow-100 border-l-4 border-yellow-500';
                              
-                             const unitLabel = unit.replace('_', ' x');
+                             const unitLabel = unit.replace('bolsa_', 'bolsas x').replace('unidades', unit === 'unidades' && p.stock === 1 ? 'unidad' : 'unidades');
 
                              return `
                              <div class="${rowClass}">
@@ -448,6 +470,7 @@
                                  <div class="flex-grow min-w-0">
                                      <p class="font-semibold truncate">${p.name}</p>
                                      <p class="text-2xl font-bold ${criticalStock ? 'text-red-700 font-extrabold' : 'text-gray-800'}">${p.stock} <span class="text-sm font-normal text-gray-500">${unitLabel}</span></p>
+                                     ${unit !== 'unidades' ? `<p class="text-xs text-gray-500">(${totalUnits} uds. en total)</p>` : ''}
                                  </div>
                                  <div class="flex flex-col gap-1.5 flex-shrink-0">
                                      <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 flex items-center justify-center"><i data-lucide="pencil" class="h-4 w-4"></i></button>
@@ -547,6 +570,17 @@
             document.getElementById('add-product-category').innerHTML = `<option value="">Seleccionar categoría...</option>${optionsHtml}<option value="new">-- Crear Nueva Categoría --</option>`;
         }
         
+        const careerPresets = {
+            'AE': { iconName: 'briefcase-business', iconBgColor: '#8DA248', iconColor: '#ffffff' },
+            'ASC': { iconName: 'computer', iconBgColor: '#00B1E1', iconColor: '#ffffff' },
+            'HYS': { iconName: 'hard-hat', iconBgColor: '#FCC01E', iconColor: '#ffffff' },
+            'RH': { iconName: 'users-round', iconBgColor: '#B388C2', iconColor: '#ffffff' },
+            'DW': { iconName: 'code-xml', iconBgColor: '#A8927D', iconColor: '#ffffff' },
+            'GI': { iconName: 'gavel', iconBgColor: '#BB242A', iconColor: '#ffffff' },
+            'IA': { iconName: 'bot', iconBgColor: '#2D4693', iconColor: '#ffffff' },
+            'MKT': { iconName: 'megaphone', iconBgColor: '#FA5D0F', iconColor: '#ffffff' }
+        };
+
         document.getElementById('add-product-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -576,13 +610,23 @@
                 const productData = {
                     name: productName,
                     stock: parseInt(document.getElementById('add-initial-stock').value, 10),
-                    iconName: document.getElementById('add-product-icon-name').value,
+                    iconName: document.getElementById('add-product-icon-name').value.trim(),
                     iconBgColor: document.getElementById('add-product-icon-bg').value,
                     iconColor: document.getElementById('add-product-icon-color').value,
                     unit: document.getElementById('add-product-unit').value,
                     createdBy: responsible,
                     categoryId: categoryId
                 };
+
+                for (const key in careerPresets) {
+                    if (productName.toUpperCase().includes(key)) {
+                        productData.iconName = careerPresets[key].iconName;
+                        productData.iconBgColor = careerPresets[key].iconBgColor;
+                        productData.iconColor = careerPresets[key].iconColor;
+                        break; 
+                    }
+                }
+
                 await addDoc(productsCollection, productData);
             }
 
@@ -606,6 +650,16 @@
             };
             await updateDoc(doc(productsCollection, id), updatedData);
             closeModal(modals.adjustStock);
+        });
+
+        document.getElementById('edit-category-form').addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-category-id').value;
+            const newName = document.getElementById('edit-category-name').value.trim();
+            if (newName) {
+                await updateDoc(doc(categoriesCollection, id), { name: newName });
+                closeModal(modals.editCategory);
+            }
         });
         
         async function handleMovementSubmit(e, formType) {
@@ -777,6 +831,33 @@
         document.getElementById('inventory-container').addEventListener('click', (e) => {
             const catHeader = e.target.closest('.category-header');
             if(catHeader) {
+                const editBtn = e.target.closest('.edit-category-btn');
+                const deleteBtn = e.target.closest('.delete-category-btn');
+
+                if (editBtn) {
+                    e.stopPropagation();
+                    const categoryId = editBtn.dataset.id;
+                    const category = categoriesCache.find(c => c.id === categoryId);
+                    document.getElementById('edit-category-id').value = category.id;
+                    document.getElementById('edit-category-name').value = category.name;
+                    openModal(modals.editCategory);
+                    return;
+                }
+
+                if(deleteBtn) {
+                    e.stopPropagation();
+                    const categoryId = deleteBtn.dataset.id;
+                    const productsInCategory = productsCache.filter(p => p.categoryId === categoryId);
+                    if (productsInCategory.length > 0) {
+                        showAlert('No se puede eliminar una categoría que contiene productos. Mueve o elimina los productos primero.');
+                    } else {
+                        showConfirm('¿Estás seguro de que quieres eliminar esta categoría?', () => {
+                            deleteDoc(doc(categoriesCollection, categoryId));
+                        });
+                    }
+                    return;
+                }
+
                 const categoryId = catHeader.dataset.id;
                 if (expandedCategories.has(categoryId)) {
                     expandedCategories.delete(categoryId);
