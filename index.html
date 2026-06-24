@@ -34,8 +34,19 @@
     .modal:not(.is-open) { opacity:0; visibility:hidden; }
     .modal.is-open { opacity:1; visibility:visible; }
     .modal > div { max-height:92vh; overflow:auto; }
-    .toast { position:fixed; right:22px; bottom:22px; z-index:75; transform:translateY(20px); opacity:0; pointer-events:none; transition:.25s ease; max-width:440px; }
-    .toast.show { transform:translateY(0); opacity:1; pointer-events:auto; }
+    .toast-stack { position:fixed; right:22px; bottom:22px; z-index:75; max-width:430px; width:calc(100vw - 32px); pointer-events:none; }
+    .toast-panel { pointer-events:auto; border-radius:28px; overflow:hidden; animation:toastSlideIn .28s ease both; }
+    .toast-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-bottom:1px solid rgba(226,232,240,.82); background:rgba(255,255,255,.82); }
+    .toast-panel-list { display:flex; flex-direction:column; gap:12px; max-height:70vh; overflow:auto; padding:12px; }
+    .toast-minimized { pointer-events:auto; width:100%; border-radius:999px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; animation:toastSlideIn .28s ease both; }
+    .toast-item { pointer-events:auto; animation:toastSlideIn .28s ease both; transform-origin:bottom right; transition:transform .22s ease, opacity .22s ease, max-height .22s ease, margin .22s ease, padding .22s ease; }
+    .toast-item.is-closing { transform:translateX(36px) scale(.98); opacity:0; max-height:0; margin:0; padding-top:0!important; padding-bottom:0!important; overflow:hidden; }
+    .toast-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .toast-mini-btn { border-radius:999px; font-size:12px; font-weight:900; padding:8px 11px; display:inline-flex; align-items:center; gap:6px; transition:.18s ease; }
+    .toast-mini-btn:hover { transform:translateY(-1px); }
+    @keyframes toastSlideIn { from { transform:translateX(32px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    .movement-compact-card { border-radius:18px; background:rgba(255,255,255,.76); border:1px solid rgba(226,232,240,.9); padding:12px; }
+    .movement-full-card { border-radius:20px; background:rgba(255,255,255,.82); border:1px solid rgba(226,232,240,.95); padding:14px; }
     .section-all { max-height:none !important; overflow:visible !important; }
     input, select { outline:none; }
     input:focus, select:focus { border-color:#2d4693; box-shadow:0 0 0 4px rgba(45,70,147,.12); }
@@ -100,20 +111,27 @@
 
       <aside class="glass rounded-[32px] p-5 md:p-6">
         <h2 class="text-2xl font-black mb-1">Historial de movimientos</h2>
-        <p class="text-slate-500 text-sm mb-5">Entradas y salidas guardadas.</p>
-        <div id="movements-history" class="space-y-3 section-all"><p class="text-center py-8 text-slate-500">Cargando historial...</p></div>
+        <p class="text-slate-500 text-sm mb-5">Últimos 5 movimientos. Podés abrir el historial completo cuando lo necesites.</p>
+        <div id="movements-history" class="space-y-3"><p class="text-center py-8 text-slate-500">Cargando historial...</p></div>
       </aside>
     </main>
   </div>
 
-  <div id="replenish-toast" class="toast glass rounded-3xl p-5 border border-yellow-200">
-    <div class="flex gap-3">
-      <div class="product-icon" style="background:linear-gradient(135deg,#fef08a,#facc15,#ca8a04);"><i data-lucide="bell-ring" class="w-6 h-6 text-white"></i></div>
-      <div class="flex-1">
-        <h3 class="font-black">Reposición sugerida</h3>
-        <p id="replenish-toast-message" class="text-sm text-slate-600 mt-1"></p>
-        <a id="send-replenish-email" class="soft-btn mt-3 inline-flex bg-slate-900 text-white px-4 py-2 text-sm items-center gap-2" href="#"><i data-lucide="mail" class="w-4 h-4"></i> Enviar correo a Juan Cruz</a>
+  <div id="replenish-toast" class="toast-stack"></div>
+
+  <div id="movement-history-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4">
+    <div class="glass rounded-[30px] p-6 w-full max-w-4xl">
+      <div class="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h3 class="text-2xl font-black">Historial completo de movimientos</h3>
+          <p class="text-slate-500 text-sm">Detalle ampliado de entradas y salidas registradas.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="close-movements-modal" class="soft-btn bg-white px-4 py-2 border border-slate-200">Cerrar</button>
+          <button type="button" class="close-modal-x soft-btn bg-slate-900 text-white px-3 py-2" aria-label="Cerrar ventana"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
       </div>
+      <div id="all-movements-container" class="space-y-3 section-all"></div>
     </div>
   </div>
 
@@ -170,6 +188,21 @@
 
   <div id="alert-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4"><div class="glass rounded-[28px] p-7 w-full max-w-md text-center"><p id="alert-message" class="text-lg mb-5"></p><button id="alert-ok-btn" class="soft-btn bg-blue-600 text-white px-8 py-2">Entendido</button></div></div>
 
+  <div id="notification-read-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4">
+    <div class="glass rounded-[28px] p-7 w-full max-w-md">
+      <h3 class="text-2xl font-black mb-2">Marcar notificación como leída</h3>
+      <p id="notification-read-product" class="text-sm text-slate-500 mb-5">Seleccioná quién leyó el aviso.</p>
+      <div class="space-y-3">
+        <select id="notification-read-user" class="w-full p-3 border border-slate-200 rounded-2xl bg-white"></select>
+        <input id="notification-read-user-custom" class="w-full p-3 border border-slate-200 rounded-2xl" placeholder="O escribir otro usuario">
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" id="cancel-read-notification" class="soft-btn bg-white px-5 py-2 border border-slate-200">Cancelar</button>
+        <button type="button" id="confirm-read-notification" class="soft-btn bg-emerald-600 text-white px-5 py-2">Guardar lectura</button>
+      </div>
+    </div>
+  </div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -215,19 +248,30 @@ const PATHS = {
     `artifacts/${projectId}/public/data/people`,
     `artifacts/default/public/data/people`,
     `people`
+  ],
+  notificationReads: [
+    `artifacts/${appId}/public/data/notificationReads`,
+    `artifacts/${projectId}/public/data/notificationReads`,
+    `artifacts/default/public/data/notificationReads`,
+    `notificationReads`
   ]
 };
-const PRIMARY = { products: PATHS.products[0], categories: PATHS.categories[0], movements: PATHS.movements[0], people: PATHS.people[0] };
+const PRIMARY = { products: PATHS.products[0], categories: PATHS.categories[0], movements: PATHS.movements[0], people: PATHS.people[0], notificationReads: PATHS.notificationReads[0] };
 const col = path => collection(db, path);
 const refFromPath = fullPath => doc(db, fullPath);
 
-let productsCache = [], categoriesCache = [], movementsCache = [], peopleCache = [];
-let partial = { products:{}, categories:{}, movements:{}, people:{} };
-let loadedRoutes = { products:0, categories:0, movements:0, people:0 };
+let productsCache = [], categoriesCache = [], movementsCache = [], peopleCache = [], readNotificationsCache = [];
+let partial = { products:{}, categories:{}, movements:{}, people:{}, notificationReads:{} };
+let loadedRoutes = { products:0, categories:0, movements:0, people:0, notificationReads:0 };
 let errors = [];
 let expandedCategories = new Set();
 let currentMovementQuantities = new Map();
 let inventorySearchTerm = '';
+let closedReplenishToasts = new Set();
+const READ_REPLENISH_KEY = 'inventario_reposicion_leidas_v1';
+const READ_RECORDS_KEY = 'inventario_reposicion_lecturas_detalle_v1';
+const NOTIF_MINIMIZED_KEY = 'inventario_notificaciones_minimizadas_v1';
+let pendingReadToastKey = null;
 
 function safeIcons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
 function showAlert(msg){ document.getElementById('alert-message').textContent = msg; openModal(document.getElementById('alert-modal')); }
@@ -241,6 +285,60 @@ function productCategoryName(p){ const c = categoriesCache.find(x => x.id === p.
 function defaultThreshold(p){ const unit = p.unit || 'unidades'; const bag = unit.startsWith('bolsa_') ? Number(unit.split('_')[1]) || 1 : 1; return unit === 'unidades' ? 100 : Math.ceil(200 / bag); }
 function threshold(p){ const n = Number(p.reorderThreshold); return Number.isFinite(n) && n >= 0 ? n : defaultThreshold(p); }
 function needsRestock(p){ return (Number(p.stock) || 0) <= threshold(p); }
+function readLocalKeys(){ try { return new Set(JSON.parse(localStorage.getItem(READ_REPLENISH_KEY) || '[]')); } catch(e){ return new Set(); } }
+function readLocalRecords(){ try { return JSON.parse(localStorage.getItem(READ_RECORDS_KEY) || '[]'); } catch(e){ return []; } }
+function saveLocalRecords(records){ try { localStorage.setItem(READ_RECORDS_KEY, JSON.stringify(records)); } catch(e){} }
+function readReplenishSet(){
+  const set = readLocalKeys();
+  readLocalRecords().forEach(r => r?.key && set.add(r.key));
+  readNotificationsCache.forEach(r => r?.key && set.add(r.key));
+  return set;
+}
+function saveReplenishSet(set){ try { localStorage.setItem(READ_REPLENISH_KEY, JSON.stringify([...set])); } catch(e){} }
+function notificationsMinimized(){ try { return localStorage.getItem(NOTIF_MINIMIZED_KEY) === '1'; } catch(e){ return false; } }
+function setNotificationsMinimized(value){ try { localStorage.setItem(NOTIF_MINIMIZED_KEY, value ? '1' : '0'); } catch(e){} }
+function replenishKey(p){ return `${p.id || nameOf(p)}|${Number(p.stock)||0}|${threshold(p)}`; }
+function productByToastKey(key){ return productsCache.find(p => replenishKey(p) === key); }
+function closeToastByKey(key){ const card=document.querySelector(`[data-toast-key="${CSS.escape(key)}"]`); if(card){ card.classList.add('is-closing'); setTimeout(()=>{ closedReplenishToasts.add(key); renderToast(); }, 210); } else { closedReplenishToasts.add(key); renderToast(); } }
+function openReadNotificationModal(key){
+  pendingReadToastKey = key;
+  const p = productByToastKey(key);
+  document.getElementById('notification-read-product').textContent = p ? `Aviso de reposición: ${nameOf(p)}` : 'Seleccioná quién leyó el aviso.';
+  const select = document.getElementById('notification-read-user');
+  select.innerHTML = `<option value="">Seleccionar usuario...</option>` + peopleCache.map(person => `<option value="${esc(person.name || '')}">${esc(person.name || '')}</option>`).join('');
+  document.getElementById('notification-read-user-custom').value = '';
+  openModal(document.getElementById('notification-read-modal'));
+}
+async function confirmToastRead(){
+  const key = pendingReadToastKey;
+  if(!key) return;
+  const selected = document.getElementById('notification-read-user').value;
+  const custom = document.getElementById('notification-read-user-custom').value.trim();
+  const readBy = custom || selected;
+  if(!readBy) return showAlert('Indicá qué usuario leyó la notificación.');
+  const p = productByToastKey(key);
+  const record = {
+    key,
+    productId: p?.id || '',
+    productName: p ? nameOf(p) : '',
+    category: p ? productCategoryName(p) : '',
+    stock: p ? (Number(p.stock)||0) : '',
+    reorderThreshold: p ? threshold(p) : '',
+    readBy,
+    readAtText: new Date().toLocaleString('es-AR'),
+    readAtISO: new Date().toISOString()
+  };
+  const read = readLocalKeys();
+  read.add(key);
+  saveReplenishSet(read);
+  const records = readLocalRecords().filter(r => r.key !== key);
+  records.push(record);
+  saveLocalRecords(records);
+  try { await addDoc(col(PRIMARY.notificationReads), { ...record, readAt: Timestamp.now() }); } catch(err){ console.warn('No se pudo guardar lectura en Firebase, queda en este navegador.', err); }
+  closeModal(document.getElementById('notification-read-modal'));
+  closeToastByKey(key);
+}
+
 function adjustHex(hex, percent){ let clean = String(hex || '#e5e7eb').replace('#',''); if(clean.length===3) clean=clean.split('').map(x=>x+x).join(''); if(!/^[0-9a-f]{6}$/i.test(clean)) clean='e5e7eb'; const num=parseInt(clean,16), amt=Math.round(2.55*percent); const r=Math.max(0,Math.min(255,(num>>16)+amt)); const g=Math.max(0,Math.min(255,((num>>8)&255)+amt)); const b=Math.max(0,Math.min(255,(num&255)+amt)); return '#'+(0x1000000+(r<<16)+(g<<8)+b).toString(16).slice(1); }
 function iconGradient(p){ const base=p.iconBgColor || '#e5e7eb'; return `linear-gradient(135deg, ${adjustHex(base,30)}, ${base}, ${adjustHex(base,-18)})`; }
 function docPath(obj){ return obj.__path || `${PRIMARY.products}/${obj.id}`; }
@@ -268,6 +366,7 @@ function updateCache(kind){
   if(kind === 'categories') categoriesCache = [...map.values()].sort((a,b)=>catName(a).localeCompare(catName(b)));
   if(kind === 'movements') movementsCache = [...map.values()].sort((a,b)=>dateMillis(b)-dateMillis(a));
   if(kind === 'people') peopleCache = [...map.values()].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  if(kind === 'notificationReads') readNotificationsCache = [...map.values()].sort((a,b)=>String(b.readAtISO||'').localeCompare(String(a.readAtISO||'')));
   loadedRoutes[kind] = Object.values(partial[kind]).filter(arr => arr.length > 0).length;
 }
 
@@ -327,14 +426,97 @@ function productCard(p){
 }
 function dateMillis(m){ const d = m.movementDate || m.timestamp || m.createdAt || m.date; if(d?.seconds) return d.seconds*1000; const t = new Date(d).getTime(); return Number.isFinite(t)?t:0; }
 function fmtDate(m){ const ms=dateMillis(m); return ms ? new Date(ms).toLocaleDateString('es-AR') : 'Sin fecha'; }
-function renderMovements(){ const c=document.getElementById('movements-history'); if(!movementsCache.length){ c.innerHTML='<p class="text-center py-8 text-slate-500">No hay movimientos registrados.</p>'; return; } c.innerHTML=movementsCache.map(m=>`<div class="rounded-2xl bg-white/75 border border-slate-200 p-3"><div class="flex justify-between gap-2"><strong class="text-sm">${esc(m.reason||'Movimiento')}</strong><span class="text-xs font-bold ${m.type==='entry'?'text-green-700':'text-red-700'}">${m.type==='entry'?'Entrada':'Salida'} · ${fmtDate(m)}</span></div><p class="text-xs text-slate-500 mt-1">Por: ${esc(m.responsible||'N/A')}</p><ul class="text-xs mt-2 space-y-1">${(m.items||[]).map(i=>`<li>• <strong>${esc(i.quantity)}</strong> x ${esc(i.productName||'Producto')}</li>`).join('')}</ul></div>`).join(''); }
+function movementItemsHtml(m){ return (m.items||[]).map(i=>`<li>• <strong>${esc(i.quantity)}</strong> x ${esc(i.productName||'Producto')}</li>`).join('') || '<li>Sin detalle de productos.</li>'; }
+function movementCard(m, full=false){
+  const isEntry=m.type==='entry';
+  const items=(m.items||[]).length;
+  const title=esc(m.reason||'Movimiento');
+  return `<div class="${full?'movement-full-card':'movement-compact-card'}">
+    <div class="flex justify-between gap-3 items-start">
+      <div class="min-w-0"><strong class="text-sm block truncate">${title}</strong><p class="text-xs text-slate-500 mt-1">Por: ${esc(m.responsible||'N/A')}</p></div>
+      <span class="text-xs font-black rounded-full px-3 py-1 ${isEntry?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${isEntry?'Entrada':'Salida'} · ${fmtDate(m)}</span>
+    </div>
+    ${full?`<ul class="text-xs mt-3 space-y-1 text-slate-700">${movementItemsHtml(m)}</ul>`:`<p class="text-xs text-slate-500 mt-2">${items} producto${items===1?'':'s'} registrado${items===1?'':'s'}.</p>`}
+  </div>`;
+}
+function renderMovements(){
+  const c=document.getElementById('movements-history');
+  const all=document.getElementById('all-movements-container');
+  if(!movementsCache.length){
+    c.innerHTML='<p class="text-center py-8 text-slate-500">No hay movimientos registrados.</p>';
+    if(all) all.innerHTML='<p class="text-center py-8 text-slate-500">No hay movimientos registrados.</p>';
+    return;
+  }
+  const latest=movementsCache.slice(0,5);
+  c.innerHTML = latest.map(m=>movementCard(m,false)).join('') +
+    `<button id="open-all-movements" class="soft-btn w-full mt-2 bg-slate-900 text-white px-4 py-3 flex items-center justify-center gap-2"><i data-lucide="history" class="w-4 h-4"></i> Ver historial completo (${movementsCache.length})</button>`;
+  if(all) all.innerHTML = movementsCache.map(m=>movementCard(m,true)).join('');
+  safeIcons();
+}
 
 function renderMovementForm(type){
   const cont=document.getElementById(`${type}-items-container`); const search=(document.getElementById(`${type}-search`)?.value||'').toLowerCase();
   const items=productsCache.filter(p=>nameOf(p).toLowerCase().includes(search));
   cont.innerHTML = items.length ? items.map(p=>`<div class="grid grid-cols-3 gap-3 items-center bg-white/70 border border-slate-200 rounded-2xl p-3"><label class="col-span-2 font-bold text-sm">${esc(nameOf(p))}<br><span class="text-xs text-slate-500">Stock: ${Number(p.stock)||0}</span></label><input type="number" min="0" data-product-id="${esc(p.id)}" value="${currentMovementQuantities.get(p.id)||''}" class="movement-quantity-input p-2 border rounded-xl" placeholder="0"></div>`).join('') : '<p class="text-center text-slate-500 py-4">No se encontraron productos.</p>';
 }
-function renderToast(){ const toast=document.getElementById('replenish-toast'); const msg=document.getElementById('replenish-toast-message'); const mail=document.getElementById('send-replenish-email'); const items=productsCache.filter(needsRestock); if(!items.length){ toast.classList.remove('show'); return; } msg.textContent = `${items.length} producto${items.length===1?'':'s'} requiere${items.length===1?'':'n'} revisión de stock.`; const subject=encodeURIComponent('Reposición sugerida - Inventario institucional'); const body=encodeURIComponent(`Hola Juan Cruz,\n\nEl sistema sugiere reponer:\n\n${items.map(p=>`- ${nameOf(p)}: stock ${Number(p.stock)||0} / aviso ${threshold(p)}`).join('\n')}\n\nGracias.`); mail.href=`mailto:juancruz.darre@cervantes.edu.ar?subject=${subject}&body=${body}`; toast.classList.add('show'); }
+function renderToast(){
+  const toast=document.getElementById('replenish-toast');
+  const read=readReplenishSet();
+  const items=productsCache.filter(needsRestock).filter(p=>{
+    const key=replenishKey(p);
+    return !closedReplenishToasts.has(key) && !read.has(key);
+  });
+  if(!items.length){ toast.innerHTML=''; return; }
+  if(notificationsMinimized()){
+    toast.innerHTML = `<button type="button" id="restore-notifications" class="toast-minimized glass border border-slate-200 text-slate-800">
+      <span class="flex items-center gap-2 font-black"><i data-lucide="bell-ring" class="w-4 h-4"></i> Notificaciones minimizadas</span>
+      <span class="text-xs font-black bg-yellow-100 text-yellow-800 rounded-full px-3 py-1">${items.length} pendiente${items.length===1?'':'s'}</span>
+    </button>`;
+    safeIcons();
+    return;
+  }
+  const listHtml = items.slice(0,8).map(p=>{
+    const key=replenishKey(p);
+    const subject=encodeURIComponent(`Reposición sugerida - ${nameOf(p)}`);
+    const body=encodeURIComponent(`Hola Juan Cruz,
+
+El sistema sugiere reponer este producto:
+
+Producto: ${nameOf(p)}
+Stock actual: ${Number(p.stock)||0}
+Aviso configurado: ${threshold(p)}
+Categoría: ${productCategoryName(p)}
+
+Gracias.`);
+    return `<div class="toast-item glass rounded-3xl p-4 border border-yellow-200" data-toast-key="${esc(key)}">
+      <div class="flex gap-3 items-start">
+        <div class="product-icon" style="width:48px;height:48px;min-width:48px;border-radius:16px;background:${iconGradient(p)}"><i data-lucide="${esc(p.iconName || 'bell-ring')}" style="color:${esc(p.iconColor || '#ffffff')}"></i></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-black text-sm leading-tight pr-1">${esc(nameOf(p))}</h3>
+            <button type="button" class="toast-close toast-mini-btn bg-white/80 text-slate-600 border border-slate-200 !p-2" data-toast-key="${esc(key)}" title="Cerrar aviso"><i data-lucide="x" class="w-4 h-4"></i></button>
+          </div>
+          <p class="text-xs text-slate-600 mt-1">Se sugiere reposición · Stock ${Number(p.stock)||0} / aviso ≤ ${threshold(p)}</p>
+          <div class="toast-actions">
+            <a class="toast-mini-btn bg-slate-900 text-white" href="mailto:juancruz.darre@cervantes.edu.ar?subject=${subject}&body=${body}"><i data-lucide="mail" class="w-4 h-4"></i> Enviar correo</a>
+            <button type="button" class="toast-read toast-mini-btn bg-emerald-50 text-emerald-700 border border-emerald-200" data-toast-key="${esc(key)}"><i data-lucide="check-check" class="w-4 h-4"></i> Marcar leída</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + (items.length>8 ? `<div class="toast-item glass rounded-2xl p-3 text-xs font-bold text-slate-600 text-center">+ ${items.length-8} producto${items.length-8===1?'':'s'} más con reposición sugerida</div>` : '');
+  toast.innerHTML = `<div class="toast-panel glass border border-slate-200">
+    <div class="toast-panel-head">
+      <div>
+        <p class="text-xs uppercase tracking-[.12em] font-black text-slate-500">Centro de notificaciones</p>
+        <p class="text-sm font-black text-slate-900">${items.length} aviso${items.length===1?'':'s'} de reposición</p>
+      </div>
+      <button type="button" id="minimize-notifications" class="toast-mini-btn bg-slate-900 text-white"><i data-lucide="minus" class="w-4 h-4"></i> Minimizar notif</button>
+    </div>
+    <div class="toast-panel-list">${listHtml}</div>
+  </div>`;
+  safeIcons();
+}
 
 async function seedIfEmpty(){
   const primaryCats = await getDocs(col(PRIMARY.categories));
@@ -352,6 +534,24 @@ document.getElementById('add-product-category').addEventListener('change', e => 
 document.getElementById('inventory-search').addEventListener('input', e => { inventorySearchTerm=e.target.value; renderInventory(); });
 document.querySelectorAll('.close-modal-btn').forEach(b=>b.addEventListener('click',()=>closeModal(b.closest('.modal'))));
 document.getElementById('alert-ok-btn').addEventListener('click',()=>closeModal(document.getElementById('alert-modal')));
+document.getElementById('movements-history').addEventListener('click', e => {
+  if(e.target.closest('#open-all-movements')) openModal(document.getElementById('movement-history-modal'));
+});
+document.getElementById('close-movements-modal').addEventListener('click',()=>closeModal(document.getElementById('movement-history-modal')));
+document.getElementById('movement-history-modal').addEventListener('click', e => { if(e.target.id === 'movement-history-modal' || e.target.closest('.close-modal-x')) closeModal(document.getElementById('movement-history-modal')); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') document.querySelectorAll('.modal.is-open').forEach(closeModal); });
+document.getElementById('replenish-toast').addEventListener('click', e => {
+  const closeBtn=e.target.closest('.toast-close');
+  const readBtn=e.target.closest('.toast-read');
+  if(e.target.closest('#minimize-notifications')) { setNotificationsMinimized(true); renderToast(); return; }
+  if(e.target.closest('#restore-notifications')) { setNotificationsMinimized(false); renderToast(); return; }
+  if(closeBtn) closeToastByKey(closeBtn.dataset.toastKey);
+  if(readBtn) openReadNotificationModal(readBtn.dataset.toastKey);
+});
+document.getElementById('cancel-read-notification').addEventListener('click',()=>closeModal(document.getElementById('notification-read-modal')));
+document.getElementById('confirm-read-notification').addEventListener('click', confirmToastRead);
+document.getElementById('notification-read-modal').addEventListener('click', e => { if(e.target.id === 'notification-read-modal') closeModal(document.getElementById('notification-read-modal')); });
+
 document.getElementById('open-add-product-modal').addEventListener('click',()=>openModal(document.getElementById('add-product-modal')));
 document.getElementById('open-register-entry-modal').addEventListener('click',()=>{ currentMovementQuantities.clear(); document.getElementById('entry-date').value=getToday(); renderMovementForm('entry'); openModal(document.getElementById('register-entry-modal')); });
 document.getElementById('open-register-exit-modal').addEventListener('click',()=>{ currentMovementQuantities.clear(); document.getElementById('exit-date').value=getToday(); renderMovementForm('exit'); openModal(document.getElementById('register-exit-modal')); });
@@ -373,8 +573,12 @@ function exportExcel(){
   const cats=categoriesCache.map(c=>({ID:c.id, Ruta:c.__path, Categoría:catName(c)}));
   const people=peopleCache.map(p=>({ID:p.id, Ruta:p.__path, Responsable:p.name||''}));
   const hist=movementsCache.flatMap(m=>(m.items||[]).map(i=>({ID_movimiento:m.id, Ruta:m.__path, Fecha:fmtDate(m), Tipo:m.type==='entry'?'Entrada':'Salida', Motivo:m.reason||'', Responsable:m.responsible||'', Producto:i.productName||'', Cantidad:i.quantity||0, Stock_antes:i.stockBefore??'', Stock_despues:i.stockAfter??''})));
+  const localRecords = readLocalRecords();
+  const byKey = new Map();
+  [...readNotificationsCache, ...localRecords].forEach(r => { if(r?.key) byKey.set(r.key, r); });
+  const notifReads = [...byKey.values()].map(r=>({Clave:r.key||'', Producto:r.productName||'', Categoría:r.category||'', Stock:r.stock??'', Aviso_reposicion:r.reorderThreshold??'', Leído_por:r.readBy||'', Fecha_lectura:r.readAtText || (r.readAtISO ? new Date(r.readAtISO).toLocaleString('es-AR') : ''), Origen:r.__path?'Firebase':'Este navegador'}));
   const wb=XLSX.utils.book_new();
-  [['Stock Actual',stock],['Categorías',cats],['Responsables',people],['Historial Completo',hist],['Registros Entradas',hist.filter(x=>x.Tipo==='Entrada')],['Registros Salidas',hist.filter(x=>x.Tipo==='Salida')],['Leer antes de importar',[{Aviso:'Backup completo generado desde el sistema. Importar actualiza/crea productos, no borra automáticamente.'}]]].forEach(([n,data])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),n));
+  [['Stock Actual',stock],['Categorías',cats],['Responsables',people],['Historial Completo',hist],['Registros Entradas',hist.filter(x=>x.Tipo==='Entrada')],['Registros Salidas',hist.filter(x=>x.Tipo==='Salida')],['Notificaciones Leídas',notifReads],['Leer antes de importar',[{Aviso:'Backup completo generado desde el sistema. Importar actualiza/crea productos, no borra automáticamente. La hoja Notificaciones Leídas indica qué usuario marcó cada aviso como leído.'}]]].forEach(([n,data])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),n));
   XLSX.writeFile(wb,`Backup_Inventario_${getToday()}.xlsx`);
 }
 document.getElementById('export-excel-btn').addEventListener('click', exportExcel);
@@ -387,6 +591,7 @@ async function main(){
   subscribeKind('products', PATHS.products);
   subscribeKind('movements', PATHS.movements);
   subscribeKind('people', PATHS.people);
+  subscribeKind('notificationReads', PATHS.notificationReads);
   try { await seedIfEmpty(); } catch(e){ errors.push('Seed: '+(e.code||e.message)); }
   setTimeout(()=>{ if(!productsCache.length) setStatus(); }, 3000);
   safeIcons();
