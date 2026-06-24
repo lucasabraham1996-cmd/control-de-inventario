@@ -1,992 +1,397 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Inventario y Stock</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Librería para generar archivos Excel (.xlsx) -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <!-- Librería de Iconos Lucide -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; z-index: 50; }
-        .modal:not(.is-open) { opacity: 0; visibility: hidden; }
-        .modal.is-open { opacity: 1; visibility: visible; }
-        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 0.375rem; }
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-        }
-        .accordion-content.open {
-             transition: max-height 0.3s ease-in;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Inventario y Stock</title>
+  <link rel="icon" type="image/x-icon" href="https://lucasabraham1996-cmd.github.io/control-de-inventario/favicon.ico">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#101827; --muted:#64748b; }
+    * { box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; min-height:100vh; background:
+      radial-gradient(circle at 10% 10%, rgba(45,70,147,.22), transparent 34%),
+      radial-gradient(circle at 92% 4%, rgba(0,177,225,.18), transparent 30%),
+      radial-gradient(circle at 72% 88%, rgba(250,93,15,.12), transparent 28%),
+      linear-gradient(135deg,#eef3fb 0%,#f8fafc 45%,#eef2ff 100%); color:var(--ink); }
+    .glass { background:rgba(255,255,255,.70); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,.76); box-shadow:0 20px 60px rgba(15,23,42,.11); }
+    .glass-dark { background:linear-gradient(135deg,rgba(15,23,42,.95),rgba(30,41,59,.88)); border:1px solid rgba(255,255,255,.14); box-shadow:0 22px 70px rgba(15,23,42,.20); }
+    .soft-btn { border-radius:999px; font-weight:800; transition:.2s ease; box-shadow:0 12px 30px rgba(15,23,42,.12); }
+    .soft-btn:hover { transform:translateY(-1px); box-shadow:0 16px 40px rgba(15,23,42,.16); }
+    .category-card { border-radius:28px; overflow:hidden; }
+    .category-head { background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(45,70,147,.90)); color:white; }
+    .product-card { min-height:154px; border-radius:24px; background:rgba(255,255,255,.78); border:1px solid rgba(226,232,240,.90); box-shadow:0 10px 30px rgba(15,23,42,.07); transition:.2s ease; }
+    .product-card:hover { transform:translateY(-2px); box-shadow:0 18px 44px rgba(15,23,42,.11); }
+    .product-icon { width:58px; height:58px; min-width:58px; border-radius:20px; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 12px 30px rgba(15,23,42,.16); }
+    .status-pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 10px; font-size:12px; font-weight:900; letter-spacing:.01em; }
+    .status-ok { background:rgba(22,163,74,.12); color:#166534; border:1px solid rgba(22,163,74,.18); }
+    .status-warn { background:rgba(250,204,21,.20); color:#854d0e; border:1px solid rgba(234,179,8,.30); }
+    .modal { transition:opacity .25s ease, visibility .25s ease; z-index:80; }
+    .modal:not(.is-open) { opacity:0; visibility:hidden; }
+    .modal.is-open { opacity:1; visibility:visible; }
+    .modal > div { max-height:92vh; overflow:auto; }
+    .toast { position:fixed; right:22px; bottom:22px; z-index:75; transform:translateY(20px); opacity:0; pointer-events:none; transition:.25s ease; max-width:440px; }
+    .toast.show { transform:translateY(0); opacity:1; pointer-events:auto; }
+    .section-all { max-height:none !important; overflow:visible !important; }
+    input, select { outline:none; }
+    input:focus, select:focus { border-color:#2d4693; box-shadow:0 0 0 4px rgba(45,70,147,.12); }
+    .excel-icon { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#16a34a,#166534); color:white; font-weight:900; }
+  </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
-
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="bg-slate-800 text-white p-4 md:p-6 rounded-2xl shadow-lg mb-8 flex items-center gap-4">
-            <img src="logoic.png" alt="Logo" class="h-12 w-12 md:h-16 md:w-16 object-contain">
-            <div>
-                <h1 class="text-2xl md:text-4xl font-bold">Sistema de Control de Inventario</h1>
-                <p class="text-slate-300 mt-1">Gestiona el stock de tu material institucional de forma centralizada.</p>
-            </div>
-        </header>
-
-        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-                    <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Inventario por Categorías</h2>
-                    <div class="flex flex-wrap gap-2">
-                        <button id="open-add-product-modal" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 flex items-center gap-2">
-                             <i data-lucide="plus-circle" class="h-5 w-5"></i>
-                            Agregar
-                        </button>
-                        <button id="open-register-entry-modal" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition duration-300 flex items-center gap-2">
-                           <i data-lucide="log-in" class="h-5 w-5"></i>
-                            Registrar Entrada
-                        </button>
-                        <button id="open-register-exit-modal" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-300 flex items-center gap-2">
-                           <i data-lucide="log-out" class="h-5 w-5"></i>
-                            Registrar Salida
-                        </button>
-                    </div>
-                </div>
-                <div id="inventory-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <p class="text-center py-8 text-gray-500 md:col-span-2">Cargando categorías...</p>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-                <h2 class="text-2xl font-semibold mb-6">Historial de Movimientos</h2>
-                <div id="movements-history" class="space-y-2 max-h-[600px] overflow-y-auto">
-                    <p class="text-center py-8 text-gray-500">No hay movimientos registrados.</p>
-                </div>
-            </div>
-        </main>
-        
-        <footer class="text-center mt-8">
-            <button id="export-excel-btn" class="bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-800 transition duration-300 flex items-center gap-3 mx-auto">
-                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M17 3H7C4.79086 3 3 4.79086 3 7V17C3 19.2091 4.79086 21 7 21H17C19.2091 21 21 19.2091 21 17V7C21 4.79086 19.2091 3 17 3ZM7 1C3.13401 1 0 4.13401 0 8V16C0 19.866 3.13401 23 7 23H17C20.866 23 24 19.866 24 16V8C24 4.13401 20.866 1 17 1H7Z" fill="white"/><path d="M14.5303 10.5303C14.8232 10.2374 14.8232 9.76256 14.5303 9.46967C14.2374 9.17678 13.7626 9.17678 13.4697 9.46967L10.5 12.4393L8.53033 10.4697C8.23744 10.1768 7.76256 10.1768 7.46967 10.4697C7.17678 10.7626 7.17678 11.2374 7.46967 11.5303L9.96967 14.0303C10.2626 14.3232 10.7374 14.3232 11.0303 14.0303L14.5303 10.5303Z" fill="white"/></svg>
-                Descargar Reporte en Excel
-            </button>
-        </footer>
+<body>
+  <div class="max-w-7xl mx-auto p-4 md:p-8">
+    <div class="glass rounded-2xl px-4 py-3 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-sm">
+      <div class="flex items-center gap-2 text-slate-700">
+        <span class="excel-icon">X</span>
+        <strong>SIEMPRE DESCARGAR UN BACK UP AL ACTUALIZAR</strong>
+        <span class="hidden md:inline text-slate-500">Guardá una copia antes de hacer cambios importantes.</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="export-excel-btn" class="soft-btn bg-emerald-600 text-white px-4 py-2 flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i> Backup Excel</button>
+        <label class="soft-btn bg-white text-slate-800 px-4 py-2 cursor-pointer flex items-center gap-2 border border-slate-200"><i data-lucide="upload" class="w-4 h-4"></i> Importar backup <input id="import-backup-input" type="file" accept=".xlsx,.xls" class="hidden"></label>
+      </div>
     </div>
 
-    <!-- Modals -->
-    <div id="add-product-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
-             <h3 class="text-2xl font-semibold mb-6">Agregar Nuevo Producto/Categoría</h3>
-            <form id="add-product-form" class="space-y-4">
-                <div>
-                    <label class="block text-gray-700 font-medium mb-2">Categoría</label>
-                    <select id="add-product-category" required class="w-full p-3 border border-gray-300 rounded-lg">
-                        <option value="">Seleccionar categoría...</option>
-                        <option value="new">-- Crear Nueva Categoría --</option>
-                    </select>
-                </div>
-                <div id="new-category-fields" class="hidden space-y-4 border p-4 rounded-lg">
-                    <input type="text" id="new-category-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre Nueva Categoría">
-                </div>
-
-                <div id="product-fields" class="space-y-4 border p-4 rounded-lg">
-                    <input type="text" id="add-product-name" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <input type="number" id="add-initial-stock" min="0" value="0" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock Inicial">
-                        <div>
-                            <label class="text-sm">Icono (de <a href="https://lucide.dev/" target="_blank" class="text-blue-600 underline">Lucide</a>)</label>
-                            <input type="text" id="add-product-icon-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="package">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-sm">Color de fondo del icono</label>
-                            <input type="color" id="add-product-icon-bg" value="#e5e7eb" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
-                        </div>
-                        <div>
-                            <label class="text-sm">Color del icono</label>
-                            <input type="color" id="add-product-icon-color" value="#1f2937" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
-                        </div>
-                    </div>
-                     <div>
-                        <label for="add-product-unit" class="text-sm">Unidad de Medida</label>
-                        <select id="add-product-unit" class="w-full p-2 border border-gray-300 rounded-lg">
-                            <option value="unidades">Unidades</option>
-                            <option value="bolsa_50">Bolsa x50</option>
-                            <option value="bolsa_100">Bolsa x100</option>
-                            <option value="bolsa_200">Bolsa x200</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="responsible-section-container"></div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Guardar</button>
-                </div>
-            </form>
+    <header class="glass-dark rounded-[32px] p-5 md:p-8 mb-6 text-white overflow-hidden relative">
+      <div class="absolute inset-0 opacity-30" style="background:radial-gradient(circle at 85% 20%,rgba(255,255,255,.28),transparent 24%),radial-gradient(circle at 15% 90%,rgba(0,177,225,.34),transparent 30%);"></div>
+      <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+        <div class="flex items-center gap-4">
+          <img src="https://lucasabraham1996-cmd.github.io/control-de-inventario/logoic.png" onerror="this.style.display='none'" alt="Logo" class="h-16 w-16 md:h-20 md:w-20 object-contain rounded-2xl bg-white/10 p-2">
+          <div>
+            <p class="uppercase text-xs tracking-[.28em] text-slate-300 font-bold">Inventario institucional</p>
+            <h1 class="text-3xl md:text-5xl font-black leading-tight">Control de Stock</h1>
+            <p class="text-slate-300 mt-1">Carga reforzada para recuperar y mostrar lo guardado.</p>
+          </div>
         </div>
-    </div>
-    
-    <div id="edit-category-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform transition-transform duration-300 scale-95">
-             <h3 class="text-2xl font-semibold mb-6">Editar Categoría</h3>
-            <form id="edit-category-form" class="space-y-4">
-                <input type="hidden" id="edit-category-id">
-                <input type="text" id="edit-category-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre de la Categoría">
-                <div class="flex justify-end space-x-4">
-                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold">Actualizar</button>
-                </div>
-            </form>
+        <div id="connection-status" class="bg-white/10 border border-white/15 rounded-2xl p-4 text-sm min-w-[280px]">
+          <div class="font-black flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-yellow-300"></span> Conectando...</div>
+          <div class="text-slate-300 mt-1">Buscando productos guardados en Firebase.</div>
         </div>
-    </div>
+      </div>
+    </header>
 
-    <div id="edit-movement-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
-             <h3 class="text-2xl font-semibold mb-6">Editar Movimiento</h3>
-             <form id="edit-movement-form" class="space-y-4">
-                 <input type="hidden" id="edit-movement-id">
-                 <input type="hidden" id="edit-movement-type">
-                 <input type="hidden" id="original-movement-items">
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="edit-movement-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo o Evento">
-                    <input type="date" id="edit-movement-date" required class="w-full p-3 border border-gray-300 rounded-lg">
-                 </div>
-                 <input type="text" id="edit-movement-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
-                 <div id="edit-movement-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
-                 <div class="responsible-section-container"></div>
-                 <div class="flex justify-end space-x-4 mt-4">
-                     <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                     <button type="submit" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold">Actualizar Movimiento</button>
-                 </div>
-             </form>
-         </div>
-     </div>
-    
-    <div id="register-entry-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
-            <h3 class="text-2xl font-semibold mb-6">Registrar Entrada de Material</h3>
-            <form id="register-entry-form" class="space-y-4">
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="entry-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Motivo (Ej: Compra #123)">
-                    <input type="date" id="entry-date" required class="w-full p-3 border border-gray-300 rounded-lg">
-                </div>
-                <input type="text" id="entry-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
-                <div id="entry-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
-                <div class="responsible-section-container"></div>
-                <div class="flex justify-end space-x-4 mt-4">
-                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Registrar</button>
-                </div>
-            </form>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="glass rounded-3xl p-5"><p class="text-sm text-slate-500 font-bold">Productos</p><p id="stat-products" class="text-4xl font-black">0</p></div>
+      <div class="glass rounded-3xl p-5"><p class="text-sm text-slate-500 font-bold">Categorías</p><p id="stat-categories" class="text-4xl font-black">0</p></div>
+      <div class="glass rounded-3xl p-5"><p class="text-sm text-slate-500 font-bold">Se sugiere reposición</p><p id="stat-critical" class="text-4xl font-black">0</p></div>
+      <div class="glass rounded-3xl p-5"><p class="text-sm text-slate-500 font-bold">Lectura</p><p id="stat-routes" class="text-lg font-black mt-2">Preparando</p></div>
+    </section>
+
+    <main class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <section class="xl:col-span-2 glass rounded-[32px] p-5 md:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-black">Inventario por categorías</h2>
+            <p class="text-slate-500 text-sm">Las secciones muestran todo el contenido, aunque quede largo.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="open-add-product-modal" class="soft-btn bg-blue-600 text-white px-4 py-2 flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Agregar</button>
+            <button id="open-register-entry-modal" class="soft-btn bg-green-600 text-white px-4 py-2 flex items-center gap-2"><i data-lucide="log-in" class="w-4 h-4"></i> Entrada</button>
+            <button id="open-register-exit-modal" class="soft-btn bg-red-600 text-white px-4 py-2 flex items-center gap-2"><i data-lucide="log-out" class="w-4 h-4"></i> Salida</button>
+          </div>
         </div>
-    </div>
+        <input id="inventory-search" class="w-full p-4 rounded-2xl border border-slate-200 bg-white/80 mb-5" placeholder="Buscar producto o categoría...">
+        <div id="inventory-container" class="grid grid-cols-1 gap-5"><p class="text-center py-10 text-slate-500">Cargando productos guardados...</p></div>
+      </section>
 
-    <div id="register-exit-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl transform transition-transform duration-300 scale-95">
-            <h3 class="text-2xl font-semibold mb-6">Registrar Salida de Material</h3>
-            <form id="register-exit-form" class="space-y-4">
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="exit-reason" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Evento o Acción">
-                    <input type="date" id="exit-date" required class="w-full p-3 border border-gray-300 rounded-lg">
-                </div>
-                <input type="text" id="exit-search" placeholder="Escribe para buscar un producto..." class="w-full p-3 border border-gray-300 rounded-lg">
-                <div id="exit-items-container" class="max-h-48 overflow-y-auto space-y-3 pr-2"></div>
-                <div class="responsible-section-container"></div>
-                <div class="flex justify-end space-x-4 mt-4">
-                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold">Registrar</button>
-                </div>
-            </form>
+      <aside class="glass rounded-[32px] p-5 md:p-6">
+        <h2 class="text-2xl font-black mb-1">Historial de movimientos</h2>
+        <p class="text-slate-500 text-sm mb-5">Entradas y salidas guardadas.</p>
+        <div id="movements-history" class="space-y-3 section-all"><p class="text-center py-8 text-slate-500">Cargando historial...</p></div>
+      </aside>
+    </main>
+  </div>
+
+  <div id="replenish-toast" class="toast glass rounded-3xl p-5 border border-yellow-200">
+    <div class="flex gap-3">
+      <div class="product-icon" style="background:linear-gradient(135deg,#fef08a,#facc15,#ca8a04);"><i data-lucide="bell-ring" class="w-6 h-6 text-white"></i></div>
+      <div class="flex-1">
+        <h3 class="font-black">Reposición sugerida</h3>
+        <p id="replenish-toast-message" class="text-sm text-slate-600 mt-1"></p>
+        <a id="send-replenish-email" class="soft-btn mt-3 inline-flex bg-slate-900 text-white px-4 py-2 text-sm items-center gap-2" href="#"><i data-lucide="mail" class="w-4 h-4"></i> Enviar correo a Juan Cruz</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal producto -->
+  <div id="add-product-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4">
+    <div class="glass rounded-[30px] p-6 w-full max-w-2xl">
+      <h3 class="text-2xl font-black mb-5">Agregar producto</h3>
+      <form id="add-product-form" class="space-y-4">
+        <select id="add-product-category" required class="w-full p-3 border border-slate-200 rounded-2xl bg-white"><option value="">Seleccionar categoría...</option><option value="new">-- Crear nueva categoría --</option></select>
+        <input id="new-category-name" class="hidden w-full p-3 border border-slate-200 rounded-2xl" placeholder="Nombre de nueva categoría">
+        <input id="add-product-name" required class="w-full p-3 border border-slate-200 rounded-2xl" placeholder="Nombre del producto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="number" id="add-initial-stock" min="0" value="0" class="p-3 border border-slate-200 rounded-2xl" placeholder="Stock inicial">
+          <input type="number" id="add-reorder-threshold" min="0" class="p-3 border border-slate-200 rounded-2xl" placeholder="Avisar en stock ≤">
+          <select id="add-product-unit" class="p-3 border border-slate-200 rounded-2xl"><option value="unidades">Unidades</option><option value="bolsa_50">Bolsa x50</option><option value="bolsa_100">Bolsa x100</option><option value="bolsa_200">Bolsa x200</option></select>
         </div>
-    </div>
-    
-    <div id="adjust-stock-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform transition-transform duration-300 scale-95">
-            <h3 class="text-2xl font-semibold mb-6">Editar Producto</h3>
-            <form id="adjust-stock-form" class="space-y-4">
-                <input type="hidden" id="adjust-stock-product-id">
-                <input type="text" id="adjust-product-name" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del Producto">
-                 <div>
-                    <label for="adjust-product-category" class="block text-gray-700 font-medium mb-2">Categoría</label>
-                    <select id="adjust-product-category" required class="w-full p-3 border border-gray-300 rounded-lg"></select>
-                </div>
-                <input type="number" id="new-stock-quantity" min="0" required class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Stock">
-                <div>
-                    <label class="text-sm">Icono (de <a href="https://lucide.dev/" target="_blank" class="text-blue-600 underline">Lucide</a>)</label>
-                    <input type="text" id="adjust-product-icon-name" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="package">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-sm">Color de fondo del icono</label>
-                        <input type="color" id="adjust-product-icon-bg" value="#e5e7eb" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
-                    </div>
-                    <div>
-                        <label class="text-sm">Color del icono</label>
-                        <input type="color" id="adjust-product-icon-color" value="#1f2937" class="w-full h-10 p-1 border border-gray-300 rounded-lg cursor-pointer">
-                    </div>
-                </div>
-                 <div>
-                    <label for="adjust-product-unit" class="text-sm">Unidad de Medida</label>
-                    <select id="adjust-product-unit" class="w-full p-2 border border-gray-300 rounded-lg">
-                        <option value="unidades">Unidades</option>
-                        <option value="bolsa_50">Bolsa x50</option>
-                        <option value="bolsa_100">Bolsa x100</option>
-                        <option value="bolsa_200">Bolsa x200</option>
-                    </select>
-                </div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" class="close-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold">Actualizar</button>
-                </div>
-            </form>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input id="add-product-icon-name" class="p-3 border border-slate-200 rounded-2xl" placeholder="Icono Lucide, ej: package">
+          <input type="color" id="add-product-icon-bg" value="#e5e7eb" class="h-12 p-1 border border-slate-200 rounded-2xl">
+          <input type="color" id="add-product-icon-color" value="#1f2937" class="h-12 p-1 border border-slate-200 rounded-2xl">
         </div>
+        <div class="responsible-section-container"></div>
+        <div class="flex justify-end gap-3 pt-2"><button type="button" class="close-modal-btn soft-btn bg-white px-5 py-2 border">Cancelar</button><button class="soft-btn bg-blue-600 text-white px-5 py-2">Guardar</button></div>
+      </form>
     </div>
+  </div>
 
-    <!-- Custom Alert and Confirm Modals -->
-    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform transition-transform duration-300 scale-95">
-            <p id="alert-message" class="mb-6 text-lg"></p>
-            <button id="alert-ok-btn" class="px-8 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">OK</button>
+  <!-- Modal editar -->
+  <div id="adjust-stock-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4">
+    <div class="glass rounded-[30px] p-6 w-full max-w-2xl">
+      <h3 class="text-2xl font-black mb-5">Editar producto</h3>
+      <form id="adjust-stock-form" class="space-y-4">
+        <input type="hidden" id="adjust-stock-product-id">
+        <input id="adjust-product-name" required class="w-full p-3 border border-slate-200 rounded-2xl" placeholder="Nombre">
+        <select id="adjust-product-category" required class="w-full p-3 border border-slate-200 rounded-2xl"></select>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="number" id="new-stock-quantity" min="0" required class="p-3 border border-slate-200 rounded-2xl" placeholder="Stock">
+          <input type="number" id="adjust-reorder-threshold" min="0" class="p-3 border border-slate-200 rounded-2xl" placeholder="Avisar en stock ≤">
+          <select id="adjust-product-unit" class="p-3 border border-slate-200 rounded-2xl"><option value="unidades">Unidades</option><option value="bolsa_50">Bolsa x50</option><option value="bolsa_100">Bolsa x100</option><option value="bolsa_200">Bolsa x200</option></select>
         </div>
-    </div>
-
-    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform transition-transform duration-300 scale-95">
-            <p id="confirm-message" class="mb-6 text-lg"></p>
-            <div class="flex justify-center space-x-4">
-                <button id="confirm-cancel-btn" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancelar</button>
-                <button id="confirm-ok-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold">Confirmar</button>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input id="adjust-product-icon-name" class="p-3 border border-slate-200 rounded-2xl" placeholder="Icono">
+          <input type="color" id="adjust-product-icon-bg" class="h-12 p-1 border border-slate-200 rounded-2xl">
+          <input type="color" id="adjust-product-icon-color" class="h-12 p-1 border border-slate-200 rounded-2xl">
         </div>
+        <div class="flex justify-end gap-3 pt-2"><button type="button" class="close-modal-btn soft-btn bg-white px-5 py-2 border">Cancelar</button><button class="soft-btn bg-yellow-500 text-white px-5 py-2">Actualizar</button></div>
+      </form>
     </div>
+  </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- Modales movimientos -->
+  <div id="register-entry-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4"><div class="glass rounded-[30px] p-6 w-full max-w-2xl"><h3 class="text-2xl font-black mb-5">Registrar entrada</h3><form id="register-entry-form" class="space-y-4"><input id="entry-reason" required class="w-full p-3 border rounded-2xl" placeholder="Motivo"><input id="entry-date" type="date" required class="w-full p-3 border rounded-2xl"><input id="entry-search" class="w-full p-3 border rounded-2xl" placeholder="Buscar producto..."><div id="entry-items-container" class="space-y-3 section-all"></div><div class="responsible-section-container"></div><div class="flex justify-end gap-3"><button type="button" class="close-modal-btn soft-btn bg-white px-5 py-2 border">Cancelar</button><button class="soft-btn bg-green-600 text-white px-5 py-2">Registrar</button></div></form></div></div>
+  <div id="register-exit-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4"><div class="glass rounded-[30px] p-6 w-full max-w-2xl"><h3 class="text-2xl font-black mb-5">Registrar salida</h3><form id="register-exit-form" class="space-y-4"><input id="exit-reason" required class="w-full p-3 border rounded-2xl" placeholder="Evento o motivo"><input id="exit-date" type="date" required class="w-full p-3 border rounded-2xl"><input id="exit-search" class="w-full p-3 border rounded-2xl" placeholder="Buscar producto..."><div id="exit-items-container" class="space-y-3 section-all"></div><div class="responsible-section-container"></div><div class="flex justify-end gap-3"><button type="button" class="close-modal-btn soft-btn bg-white px-5 py-2 border">Cancelar</button><button class="soft-btn bg-red-600 text-white px-5 py-2">Registrar</button></div></form></div></div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAs_LyHNTXEM40bnFMRVYF0FvAcfY4upJw",
-            authDomain: "control-de-inventario-a6a98.firebaseapp.com",
-            projectId: "control-de-inventario-a6a98",
-            storageBucket: "control-de-inventario-a6a98.appspot.com",
-            messagingSenderId: "845532432483",
-            appId: "1:845532432483:web:ed38fcc4cad0537203d056",
-            measurementId: "G-7VVWLJG9P6"
-        };
+  <div id="alert-modal" class="modal fixed inset-0 bg-slate-950/60 flex items-center justify-center p-4"><div class="glass rounded-[28px] p-7 w-full max-w-md text-center"><p id="alert-message" class="text-lg mb-5"></p><button id="alert-ok-btn" class="soft-btn bg-blue-600 text-white px-8 py-2">Entendido</button></div></div>
 
-        const appId = firebaseConfig.appId; 
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, getDocs, Timestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const productsCollection = collection(db, `/artifacts/${appId}/public/data/products`);
-        const movementsCollection = collection(db, `/artifacts/${appId}/public/data/movements`);
-        const peopleCollection = collection(db, `/artifacts/${appId}/public/data/people`);
-        const categoriesCollection = collection(db, `/artifacts/${appId}/public/data/categories`);
+const firebaseConfig = {
+  apiKey: "AIzaSyAs_LyHNTXEM40bnFMRVYF0FvAcfY4upJw",
+  authDomain: "control-de-inventario-a6a98.firebaseapp.com",
+  projectId: "control-de-inventario-a6a98",
+  storageBucket: "control-de-inventario-a6a98.appspot.com",
+  messagingSenderId: "845532432483",
+  appId: "1:845532432483:web:ed38fcc4cad0537203d056",
+  measurementId: "G-7VVWLJG9P6"
+};
 
-        let productsCache = [], peopleCache = [], movementsCache = [], categoriesCache = [];
-        let expandedCategories = new Set();
-        let expandedMovements = new Set();
-        let confirmCallback = null;
-        let currentMovementQuantities = new Map();
-        let categorySortConfigs = {};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const appId = firebaseConfig.appId;
+const projectId = firebaseConfig.projectId;
 
-        const modals = {
-            addProduct: document.getElementById('add-product-modal'),
-            registerEntry: document.getElementById('register-entry-modal'),
-            registerExit: document.getElementById('register-exit-modal'),
-            adjustStock: document.getElementById('adjust-stock-modal'),
-            editMovement: document.getElementById('edit-movement-modal'),
-            editCategory: document.getElementById('edit-category-modal'),
-            alert: document.getElementById('alert-modal'),
-            confirm: document.getElementById('confirm-modal'),
-        };
+const PATHS = {
+  products: [
+    `artifacts/${appId}/public/data/products`,
+    `artifacts/${projectId}/public/data/products`,
+    `artifacts/default/public/data/products`,
+    `products`
+  ],
+  categories: [
+    `artifacts/${appId}/public/data/categories`,
+    `artifacts/${projectId}/public/data/categories`,
+    `artifacts/default/public/data/categories`,
+    `categories`
+  ],
+  movements: [
+    `artifacts/${appId}/public/data/movements`,
+    `artifacts/${projectId}/public/data/movements`,
+    `artifacts/default/public/data/movements`,
+    `movements`
+  ],
+  people: [
+    `artifacts/${appId}/public/data/people`,
+    `artifacts/${projectId}/public/data/people`,
+    `artifacts/default/public/data/people`,
+    `people`
+  ]
+};
+const PRIMARY = { products: PATHS.products[0], categories: PATHS.categories[0], movements: PATHS.movements[0], people: PATHS.people[0] };
+const col = path => collection(db, path);
+const refFromPath = fullPath => doc(db, fullPath);
 
-        const openModal = (modal) => {
-            modal.classList.add('is-open');
-            setTimeout(() => modal.querySelector('div').classList.remove('scale-95'), 10);
-        };
-        const closeModal = (modal) => {
-            if (!modal) return;
-            modal.querySelector('div').classList.add('scale-95');
-            setTimeout(() => modal.classList.remove('is-open'), 300);
-        };
+let productsCache = [], categoriesCache = [], movementsCache = [], peopleCache = [];
+let partial = { products:{}, categories:{}, movements:{}, people:{} };
+let loadedRoutes = { products:0, categories:0, movements:0, people:0 };
+let errors = [];
+let expandedCategories = new Set();
+let currentMovementQuantities = new Map();
+let inventorySearchTerm = '';
 
-        function showAlert(message) {
-            modals.alert.querySelector('#alert-message').textContent = message;
-            openModal(modals.alert);
-        }
+function safeIcons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
+function showAlert(msg){ document.getElementById('alert-message').textContent = msg; openModal(document.getElementById('alert-modal')); }
+function openModal(m){ m.classList.add('is-open'); }
+function closeModal(m){ if(m) m.classList.remove('is-open'); }
+function getToday(){ return new Date().toISOString().split('T')[0]; }
+function esc(s){ return String(s ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+function nameOf(p){ return String(p?.name || p?.producto || p?.Producto || 'Producto sin nombre'); }
+function catName(c){ return String(c?.name || c?.categoria || c?.Categoría || 'Sin categoría'); }
+function productCategoryName(p){ const c = categoriesCache.find(x => x.id === p.categoryId) || categoriesCache.find(x => catName(x) === p.category); return c ? catName(c) : (p.category || 'Sin categoría'); }
+function defaultThreshold(p){ const unit = p.unit || 'unidades'; const bag = unit.startsWith('bolsa_') ? Number(unit.split('_')[1]) || 1 : 1; return unit === 'unidades' ? 100 : Math.ceil(200 / bag); }
+function threshold(p){ const n = Number(p.reorderThreshold); return Number.isFinite(n) && n >= 0 ? n : defaultThreshold(p); }
+function needsRestock(p){ return (Number(p.stock) || 0) <= threshold(p); }
+function adjustHex(hex, percent){ let clean = String(hex || '#e5e7eb').replace('#',''); if(clean.length===3) clean=clean.split('').map(x=>x+x).join(''); if(!/^[0-9a-f]{6}$/i.test(clean)) clean='e5e7eb'; const num=parseInt(clean,16), amt=Math.round(2.55*percent); const r=Math.max(0,Math.min(255,(num>>16)+amt)); const g=Math.max(0,Math.min(255,((num>>8)&255)+amt)); const b=Math.max(0,Math.min(255,(num&255)+amt)); return '#'+(0x1000000+(r<<16)+(g<<8)+b).toString(16).slice(1); }
+function iconGradient(p){ const base=p.iconBgColor || '#e5e7eb'; return `linear-gradient(135deg, ${adjustHex(base,30)}, ${base}, ${adjustHex(base,-18)})`; }
+function docPath(obj){ return obj.__path || `${PRIMARY.products}/${obj.id}`; }
+function dedupeDocs(lists){ const map = new Map(); lists.flat().forEach(item => { const key = item.id || `${nameOf(item)}__${item.categoryId||item.category||''}`; if(!map.has(key)) map.set(key,item); }); return [...map.values()]; }
 
-        function showConfirm(message, callback) {
-            confirmCallback = callback;
-            modals.confirm.querySelector('#confirm-message').textContent = message;
-            openModal(modals.confirm);
-        }
+function setStatus(){
+  const el = document.getElementById('connection-status');
+  const total = productsCache.length;
+  const ok = total > 0;
+  el.innerHTML = `<div class="font-black flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-yellow-300'}"></span>${ok ? 'Conectado y leyendo productos' : 'Conectado, sin productos visibles todavía'}</div><div class="text-slate-300 mt-1">Productos encontrados: <strong class="text-white">${total}</strong> · Rutas con datos: ${loadedRoutes.products}</div>${errors.length ? `<div class="text-xs text-amber-200 mt-2">Aviso: algunas rutas alternativas no respondieron, pero la app sigue funcionando.</div>` : ''}`;
+  document.getElementById('stat-products').textContent = productsCache.length;
+  document.getElementById('stat-categories').textContent = categoriesCache.length;
+  document.getElementById('stat-critical').textContent = productsCache.filter(needsRestock).length;
+  document.getElementById('stat-routes').textContent = `${loadedRoutes.products} ruta${loadedRoutes.products===1?'':'s'}`;
+}
 
-        function getTodayDateString() {
-            return new Date().toISOString().split('T')[0];
-        }
+function updateCache(kind){
+  const all = Object.values(partial[kind]).flat();
+  const map = new Map();
+  all.forEach(x => {
+    const stable = x.id || `${nameOf(x)}__${x.categoryId||x.category||''}`;
+    if(!map.has(stable)) map.set(stable,x);
+  });
+  if(kind === 'products') productsCache = [...map.values()].sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+  if(kind === 'categories') categoriesCache = [...map.values()].sort((a,b)=>catName(a).localeCompare(catName(b)));
+  if(kind === 'movements') movementsCache = [...map.values()].sort((a,b)=>dateMillis(b)-dateMillis(a));
+  if(kind === 'people') peopleCache = [...map.values()].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  loadedRoutes[kind] = Object.values(partial[kind]).filter(arr => arr.length > 0).length;
+}
 
-        document.getElementById('alert-ok-btn').addEventListener('click', () => closeModal(modals.alert));
-        document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
-            confirmCallback = null;
-            closeModal(modals.confirm);
-        });
-        document.getElementById('confirm-ok-btn').addEventListener('click', () => {
-            if (confirmCallback) confirmCallback();
-            confirmCallback = null;
-            closeModal(modals.confirm);
-        });
-        
-        document.getElementById('open-add-product-modal').addEventListener('click', () => openModal(modals.addProduct));
-        document.getElementById('open-register-entry-modal').addEventListener('click', () => { 
-            currentMovementQuantities.clear(); 
-            document.getElementById('entry-date').value = getTodayDateString();
-            renderMovementForm('entry'); 
-            openModal(modals.registerEntry); 
-        });
-        document.getElementById('open-register-exit-modal').addEventListener('click', () => { 
-            currentMovementQuantities.clear(); 
-            document.getElementById('exit-date').value = getTodayDateString();
-            renderMovementForm('exit'); 
-            openModal(modals.registerExit); 
-        });
-        document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
-        
-        const initialCategories = [ { name: 'Folletería' }, { name: 'Cuadernos' }, { name: 'Carpetas' }, { name: 'Anotadores' }, { name: 'Institucional' }, { name: 'Golosinas', iconName: 'candy'} ];
-        const initialProducts = [ { name: 'Folletería institucional', stock: 1000, category: 'Folletería', iconName: 'file-text' }, { name: 'Dossier institucional', stock: 300, category: 'Institucional', iconName: 'book-open' }, { name: 'Carpetas', stock: 800, category: 'Carpetas', iconName: 'folder' }, { name: 'Anotadores IC', stock: 400, category: 'Anotadores', iconName: 'pencil' }, { name: 'Anotadores CCAP', stock: 400, category: 'Anotadores', iconName: 'pencil' }, { name: 'Cuadernos IC', stock: 200, category: 'Cuadernos', iconName: 'notebook' }, { name: 'Cuadernos CCAP', stock: 200, category: 'Cuadernos', iconName: 'notebook' }, { name: 'Recursos Humanos', stock: 500, iconName: 'users', iconBgColor: '#b388c2', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Analista de Sistemas', stock: 500, iconName: 'laptop', iconBgColor: '#00b1e1', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Higiene y Seguridad Laboral', stock: 500, iconName: 'hard-hat', iconBgColor: '#f4c01e', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Administración de Empresas', stock: 500, iconName: 'briefcase', iconBgColor: '#8da248', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Marketing', stock: 500, iconName: 'megaphone', iconBgColor: '#fa5d0f', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Desarrollo Web y Aplicaciones Digitales', stock: 500, iconName: 'code-2', iconBgColor: '#a8927d', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Gestión Inmobiliaria', stock: 500, iconName: 'home', iconBgColor: '#bb242a', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Ciencia de Datos e IA', stock: 500, iconName: 'brain-circuit', iconBgColor: '#2d4693', iconColor: '#ffffff', category: 'Folletería' }, { name: 'Caramelos', stock: 1000, category: 'Golosinas', iconName: 'candy', unit: 'bolsa_200'} ];
-        const initialPeople = [{ name: 'Lucas Abraham' }, { name: 'Juan Cruz Darré' }, { name: 'Gonzalo Moreno' }];
-        
-        async function seedData() {
-            const catSnap = await getDocs(query(categoriesCollection));
-            let allCats = catSnap.docs.map(d => ({id: d.id, ...d.data()}));
-            if (catSnap.empty) {
-                const batch = writeBatch(db);
-                initialCategories.forEach(item => batch.set(doc(categoriesCollection), item));
-                await batch.commit();
-                const newCatSnap = await getDocs(query(categoriesCollection));
-                allCats = newCatSnap.docs.map(d => ({id: d.id, ...d.data()}));
-            }
+function subscribeKind(kind, paths){
+  paths.forEach(path => {
+    try {
+      onSnapshot(col(path), snap => {
+        partial[kind][path] = snap.docs.map(d => ({ id:d.id, __path:`${path}/${d.id}`, __collectionPath:path, ...d.data() }));
+        updateCache(kind);
+        afterDataChange();
+      }, err => {
+        errors.push(`${kind}: ${path}: ${err.code || err.message}`);
+        partial[kind][path] = [];
+        updateCache(kind);
+        afterDataChange();
+      });
+    } catch(e) { errors.push(`${kind}: ${path}: ${e.message}`); }
+  });
+}
 
-            const prodSnap = await getDocs(query(productsCollection));
-            if (prodSnap.empty && allCats.length > 0) {
-                const categoryMap = Object.fromEntries(allCats.map(c => [c.name, c.id]));
-                const batch = writeBatch(db);
-                initialProducts.forEach(p => {
-                    const { category, ...productData } = p;
-                    if(categoryMap[category]) {
-                        productData.categoryId = categoryMap[category];
-                        if (p.category === 'Folletería' && !productData.name.toLowerCase().includes('folletería')) {
-                            productData.name = `Folletería - ${productData.name}`;
-                        }
-                        batch.set(doc(productsCollection), productData);
-                    }
-                });
-                await batch.commit();
-            }
-             const peopleSnap = await getDocs(query(peopleCollection));
-            if (peopleSnap.empty) {
-                const batch = writeBatch(db);
-                initialPeople.forEach(item => batch.set(doc(peopleCollection), item));
-                await batch.commit();
-            }
-        }
-        
-        function renderInventory() {
-            const container = document.getElementById('inventory-container');
-            if (categoriesCache.length === 0) {
-                 container.innerHTML = `<p class="text-center py-8 text-gray-500 md:col-span-2">No hay categorías. Agrega un producto para empezar.</p>`;
-                 return;
-            }
-            container.innerHTML = categoriesCache.map(category => {
-                const productsInCategory = productsCache.filter(p => p.categoryId === category.id);
-                const isExpanded = expandedCategories.has(category.id);
+function afterDataChange(){ populateDropdowns(); renderInventory(); renderMovements(); renderResponsibleSections(); setStatus(); renderToast(); safeIcons(); }
+function populateDropdowns(){
+  const opts = categoriesCache.map(c => `<option value="${esc(c.id)}">${esc(catName(c))}</option>`).join('');
+  document.getElementById('add-product-category').innerHTML = `<option value="">Seleccionar categoría...</option>${opts}<option value="new">-- Crear nueva categoría --</option>`;
+  document.getElementById('adjust-product-category').innerHTML = opts || `<option value="sin_categoria">Sin categoría</option>`;
+}
+function renderResponsibleSections(){ document.querySelectorAll('.responsible-section-container').forEach(c => { if(c.dataset.rendered && c.querySelector('select')) return; renderResponsibleSection(c); }); }
+function renderResponsibleSection(c, selected=''){
+  c.dataset.rendered='1';
+  c.innerHTML = `<label class="block text-sm font-black text-slate-600 mb-2">Responsable</label><div class="flex gap-2"><select required class="responsible-select w-full p-3 border border-slate-200 rounded-2xl bg-white"><option value="">Seleccionar persona...</option>${peopleCache.map(p=>`<option value="${esc(p.name)}" ${p.name===selected?'selected':''}>${esc(p.name)}</option>`).join('')}</select><input class="new-person-input p-3 border border-slate-200 rounded-2xl" placeholder="Nueva persona"><button type="button" class="add-person-btn soft-btn bg-slate-800 text-white px-4">+</button></div>`;
+}
 
-                const sortConfig = categorySortConfigs[category.id] || { key: 'name', direction: 'asc' };
-                productsInCategory.sort((a, b) => {
-                    let comparison = 0;
-                    if (sortConfig.key === 'name') {
-                        comparison = a.name.localeCompare(b.name);
-                    } else { // stock
-                        comparison = a.stock - b.stock;
-                    }
-                    return sortConfig.direction === 'asc' ? comparison : -comparison;
-                });
+function productBelongs(p,c){ return (p.categoryId && p.categoryId === c.id) || (p.category && p.category === catName(c)) || (!p.categoryId && !p.category && c.id === '__sin_categoria__'); }
+function renderInventory(){
+  const container=document.getElementById('inventory-container');
+  const term=inventorySearchTerm.toLowerCase().trim();
+  if(!productsCache.length){ container.innerHTML = `<div class="glass rounded-3xl p-8 text-center text-slate-500"><strong>No se encontraron productos guardados.</strong><br>La app está viva; si antes había productos, probablemente estaban en otra base/ruta no accesible desde este archivo.</div>`; setStatus(); return; }
+  const cats = categoriesCache.length ? categoriesCache : [{id:'__sin_categoria__', name:'Productos guardados'}];
+  let html = cats.map(c => {
+    let items = productsCache.filter(p => productBelongs(p,c));
+    if(!categoriesCache.length) items = productsCache;
+    if(term) items = items.filter(p => nameOf(p).toLowerCase().includes(term) || productCategoryName(p).toLowerCase().includes(term));
+    if(!items.length) return '';
+    expandedCategories.add(c.id);
+    return `<div class="category-card glass"><div class="category-head p-4 md:p-5 flex justify-between items-center"><div><h3 class="text-xl font-black">${esc(catName(c))}</h3><p class="text-sm text-slate-300">${items.length} producto${items.length===1?'':'s'} · ${items.filter(needsRestock).length} con reposición sugerida</p></div><i data-lucide="boxes" class="w-7 h-7"></i></div><div class="section-all p-4 grid grid-cols-1 md:grid-cols-2 gap-4">${items.map(productCard).join('')}</div></div>`;
+  }).join('');
+  const uncategorized = productsCache.filter(p => !cats.some(c => productBelongs(p,c)));
+  if(uncategorized.length){ html += `<div class="category-card glass"><div class="category-head p-4"><h3 class="text-xl font-black">Productos recuperados sin coincidencia de categoría</h3></div><div class="section-all p-4 grid grid-cols-1 md:grid-cols-2 gap-4">${uncategorized.map(productCard).join('')}</div></div>`; }
+  container.innerHTML = html || `<p class="text-center py-8 text-slate-500">No hay resultados para la búsqueda.</p>`;
+  setStatus(); safeIcons();
+}
+function productCard(p){
+  const warn = needsRestock(p);
+  const unit = p.unit || 'unidades';
+  const label = unit.replace('bolsa_','bolsas x');
+  return `<div class="product-card p-4 flex gap-4 items-start"><div class="product-icon" style="background:${iconGradient(p)}"><i data-lucide="${esc(p.iconName || 'package')}" style="color:${esc(p.iconColor || '#1f2937')}"></i></div><div class="flex-1 min-w-0"><div class="min-h-[50px]"><h4 class="text-lg font-black leading-tight text-slate-900">${esc(nameOf(p))}</h4><div class="mt-2"><span class="status-pill ${warn?'status-warn':'status-ok'}"><span class="w-2 h-2 rounded-full ${warn?'bg-yellow-500':'bg-emerald-500'}"></span>${warn?'Se sugiere reposición':'En Stock'}</span></div></div><div class="mt-4 flex items-end justify-between gap-3"><div><p class="text-3xl font-black ${warn?'text-amber-700':'text-slate-900'}">${Number(p.stock)||0}</p><p class="text-xs font-bold text-slate-500">${esc(label)} · aviso en ≤ ${threshold(p)}</p></div><div class="flex gap-2"><button data-id="${esc(p.id)}" class="adjust-stock-btn soft-btn bg-yellow-500 text-white p-3"><i data-lucide="pencil" class="w-4 h-4"></i></button><button data-id="${esc(p.id)}" class="delete-product-btn soft-btn bg-red-500 text-white p-3"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div></div></div>`;
+}
+function dateMillis(m){ const d = m.movementDate || m.timestamp || m.createdAt || m.date; if(d?.seconds) return d.seconds*1000; const t = new Date(d).getTime(); return Number.isFinite(t)?t:0; }
+function fmtDate(m){ const ms=dateMillis(m); return ms ? new Date(ms).toLocaleDateString('es-AR') : 'Sin fecha'; }
+function renderMovements(){ const c=document.getElementById('movements-history'); if(!movementsCache.length){ c.innerHTML='<p class="text-center py-8 text-slate-500">No hay movimientos registrados.</p>'; return; } c.innerHTML=movementsCache.map(m=>`<div class="rounded-2xl bg-white/75 border border-slate-200 p-3"><div class="flex justify-between gap-2"><strong class="text-sm">${esc(m.reason||'Movimiento')}</strong><span class="text-xs font-bold ${m.type==='entry'?'text-green-700':'text-red-700'}">${m.type==='entry'?'Entrada':'Salida'} · ${fmtDate(m)}</span></div><p class="text-xs text-slate-500 mt-1">Por: ${esc(m.responsible||'N/A')}</p><ul class="text-xs mt-2 space-y-1">${(m.items||[]).map(i=>`<li>• <strong>${esc(i.quantity)}</strong> x ${esc(i.productName||'Producto')}</li>`).join('')}</ul></div>`).join(''); }
 
-                return `
-                <div class="rounded-lg shadow-md overflow-hidden">
-                    <div class="category-header flex justify-between items-center p-4 cursor-pointer ${isExpanded ? 'bg-slate-600' : 'bg-slate-900'} text-white transition-colors" data-id="${category.id}">
-                        <div class="flex items-center gap-3">
-                            <h3 class="font-bold text-lg">${category.name}</h3>
-                            <span class="text-sm bg-white text-slate-800 font-semibold px-2 py-0.5 rounded-full flex-shrink-0">${productsInCategory.length}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button class="edit-category-btn p-1 hover:bg-white/20 rounded-full" data-id="${category.id}"><i data-lucide="pencil" class="h-4 w-4"></i></button>
-                            <button class="delete-category-btn p-1 hover:bg-white/20 rounded-full" data-id="${category.id}"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
-                            <i data-lucide="chevron-down" class="arrow-icon h-6 w-6 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
-                        </div>
-                    </div>
-                    <div class="products-list accordion-content ${isExpanded ? 'open bg-slate-50' : 'bg-white'}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
-                        <div class="p-2 border-b border-gray-200 flex items-center justify-end gap-2 text-xs">
-                            <span>Ordenar por:</span>
-                            <button class="sort-btn p-1 rounded ${sortConfig.key === 'name' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200'}" data-category-id="${category.id}" data-key="name">Nombre</button>
-                            <button class="sort-btn p-1 rounded ${sortConfig.key === 'stock' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200'}" data-category-id="${category.id}" data-key="stock">Stock</button>
-                        </div>
-                        ${productsInCategory.length > 0 ? productsInCategory.map(p => {
-                             const unit = p.unit || 'unidades';
-                             const bagSize = unit.startsWith('bolsa_') ? parseInt(unit.split('_')[1], 10) : 1;
-                             const totalUnits = p.stock * (unit === 'unidades' ? 1 : bagSize);
+function renderMovementForm(type){
+  const cont=document.getElementById(`${type}-items-container`); const search=(document.getElementById(`${type}-search`)?.value||'').toLowerCase();
+  const items=productsCache.filter(p=>nameOf(p).toLowerCase().includes(search));
+  cont.innerHTML = items.length ? items.map(p=>`<div class="grid grid-cols-3 gap-3 items-center bg-white/70 border border-slate-200 rounded-2xl p-3"><label class="col-span-2 font-bold text-sm">${esc(nameOf(p))}<br><span class="text-xs text-slate-500">Stock: ${Number(p.stock)||0}</span></label><input type="number" min="0" data-product-id="${esc(p.id)}" value="${currentMovementQuantities.get(p.id)||''}" class="movement-quantity-input p-2 border rounded-xl" placeholder="0"></div>`).join('') : '<p class="text-center text-slate-500 py-4">No se encontraron productos.</p>';
+}
+function renderToast(){ const toast=document.getElementById('replenish-toast'); const msg=document.getElementById('replenish-toast-message'); const mail=document.getElementById('send-replenish-email'); const items=productsCache.filter(needsRestock); if(!items.length){ toast.classList.remove('show'); return; } msg.textContent = `${items.length} producto${items.length===1?'':'s'} requiere${items.length===1?'':'n'} revisión de stock.`; const subject=encodeURIComponent('Reposición sugerida - Inventario institucional'); const body=encodeURIComponent(`Hola Juan Cruz,\n\nEl sistema sugiere reponer:\n\n${items.map(p=>`- ${nameOf(p)}: stock ${Number(p.stock)||0} / aviso ${threshold(p)}`).join('\n')}\n\nGracias.`); mail.href=`mailto:juancruz.darre@cervantes.edu.ar?subject=${subject}&body=${body}`; toast.classList.add('show'); }
 
-                             let lowStock = false, criticalStock = false;
+async function seedIfEmpty(){
+  const primaryCats = await getDocs(col(PRIMARY.categories));
+  if(primaryCats.empty){ const batch=writeBatch(db); ['Folletería','Cuadernos','Carpetas','Anotadores','Institucional','Golosinas'].forEach(name=>batch.set(doc(col(PRIMARY.categories)),{name})); await batch.commit(); }
+  const primaryPeople = await getDocs(col(PRIMARY.people));
+  if(primaryPeople.empty){ const batch=writeBatch(db); ['Lucas Abraham','Juan Cruz Darré','Gonzalo Moreno'].forEach(name=>batch.set(doc(col(PRIMARY.people)),{name})); await batch.commit(); }
+}
 
-                             if (unit === 'unidades') {
-                                criticalStock = p.stock < 50;
-                                lowStock = p.stock < 100;
-                             } else {
-                                criticalStock = totalUnits < 100;
-                                lowStock = totalUnits < 200;
-                             }
+async function saveNewCategory(name){ const r = await addDoc(col(PRIMARY.categories), { name, createdAt: Timestamp.now() }); return r.id; }
+async function addPerson(name){ await addDoc(col(PRIMARY.people), { name }); }
 
-                             let rowClass = 'border-t border-gray-200 flex items-center p-3 gap-4';
-                             if (criticalStock) rowClass += ' bg-red-200 border-l-4 border-red-500'; 
-                             else if (lowStock) rowClass += ' bg-yellow-100 border-l-4 border-yellow-500';
-                             
-                             const unitLabel = unit.replace('bolsa_', 'bolsas x').replace('unidades', unit === 'unidades' && p.stock === 1 ? 'unidad' : 'unidades');
+function getSelectedCategoryName(id){ const c=categoriesCache.find(x=>x.id===id); return c ? catName(c) : ''; }
 
-                             return `
-                             <div class="${rowClass}">
-                                <div class="w-12 h-12 flex-shrink-0 rounded-lg flex items-center justify-center" style="background-color: ${p.iconBgColor || '#e5e7eb'};">
-                                    <i data-lucide="${p.iconName || 'package'}" style="color: ${p.iconColor || '#1f2937'};"></i>
-                                </div>
-                                 <div class="flex-grow min-w-0">
-                                     <p class="font-semibold truncate">${p.name}</p>
-                                     <p class="text-2xl font-bold ${criticalStock ? 'text-red-700 font-extrabold' : 'text-gray-800'}">${p.stock} <span class="text-sm font-normal text-gray-500">${unitLabel}</span></p>
-                                     ${unit !== 'unidades' ? `<p class="text-xs text-gray-500">(${totalUnits} uds. en total)</p>` : ''}
-                                 </div>
-                                 <div class="flex flex-col gap-1.5 flex-shrink-0">
-                                     <button data-id="${p.id}" class="adjust-stock-btn bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 flex items-center justify-center"><i data-lucide="pencil" class="h-4 w-4"></i></button>
-                                     <button data-id="${p.id}" class="delete-product-btn bg-red-500 text-white p-2 rounded-md hover:bg-red-600 flex items-center justify-center"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
-                                 </div>
-                             </div>`;
-                        }).join('') : '<p class="text-center text-gray-500 p-4 border-t">No hay productos en esta categoría.</p>'}
-                    </div>
-                </div>
-                `;
-            }).join('');
-            lucide.createIcons();
-        }
-        
-        function renderMovements() {
-            const container = document.getElementById('movements-history');
-            container.innerHTML = movementsCache.length === 0 ? `<p class="text-center py-8 text-gray-500">No hay movimientos.</p>` : movementsCache.map(mov => {
-                const isEntry = mov.type === 'entry';
-                const headerColor = isEntry ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900';
-                const isExpanded = expandedMovements.has(mov.id);
-                const dateField = mov.movementDate || mov.timestamp;
-                const dateToShow = dateField ? new Date(dateField.seconds * 1000).toLocaleDateString() : 'N/A';
+document.getElementById('add-product-category').addEventListener('change', e => document.getElementById('new-category-name').classList.toggle('hidden', e.target.value !== 'new'));
+document.getElementById('inventory-search').addEventListener('input', e => { inventorySearchTerm=e.target.value; renderInventory(); });
+document.querySelectorAll('.close-modal-btn').forEach(b=>b.addEventListener('click',()=>closeModal(b.closest('.modal'))));
+document.getElementById('alert-ok-btn').addEventListener('click',()=>closeModal(document.getElementById('alert-modal')));
+document.getElementById('open-add-product-modal').addEventListener('click',()=>openModal(document.getElementById('add-product-modal')));
+document.getElementById('open-register-entry-modal').addEventListener('click',()=>{ currentMovementQuantities.clear(); document.getElementById('entry-date').value=getToday(); renderMovementForm('entry'); openModal(document.getElementById('register-entry-modal')); });
+document.getElementById('open-register-exit-modal').addEventListener('click',()=>{ currentMovementQuantities.clear(); document.getElementById('exit-date').value=getToday(); renderMovementForm('exit'); openModal(document.getElementById('register-exit-modal')); });
+document.addEventListener('click', async e => { if(e.target.closest('.add-person-btn')){ const wrap=e.target.closest('div'); const input=wrap.querySelector('.new-person-input'); const name=input.value.trim(); if(name){ await addPerson(name); input.value=''; } } });
+['entry','exit'].forEach(type=>{ document.getElementById(`${type}-search`).addEventListener('input',()=>renderMovementForm(type)); document.getElementById(`${type}-items-container`).addEventListener('input', e=>{ if(e.target.classList.contains('movement-quantity-input')){ const q=parseInt(e.target.value,10); const id=e.target.dataset.productId; if(q>0) currentMovementQuantities.set(id,q); else currentMovementQuantities.delete(id); } }); });
 
-                return `
-                    <div class="movement-item rounded-lg border overflow-hidden">
-                        <div class="movement-header flex justify-between items-center p-2 cursor-pointer ${headerColor}" data-id="${mov.id}">
-                            <p class="font-bold text-sm truncate pr-2">${mov.reason || 'Movimiento'}</p>
-                            <div class="flex items-center gap-2">
-                                <p class="text-xs font-mono">${dateToShow}</p>
-                                <i data-lucide="chevron-down" class="arrow-icon h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}"></i>
-                            </div>
-                        </div>
-                        <div class="movement-details accordion-content ${isExpanded ? 'open' : ''}" style="max-height: ${isExpanded ? '1000px' : '0px'};">
-                            <div class="bg-white p-3 text-sm">
-                                <div class="flex justify-between items-center mb-2">
-                                    <p class="text-xs text-gray-500">Por: <span class="font-medium text-gray-700">${mov.responsible || 'N/A'}</span></p>
-                                    <div>
-                                        <button data-id="${mov.id}" class="edit-movement-btn text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">Editar</button>
-                                        <button data-id="${mov.id}" class="delete-movement-btn text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200">Eliminar</button>
-                                    </div>
-                                </div>
-                                <ul class="list-disc pl-5 text-xs space-y-1">
-                                    ${mov.items.map(item => `
-                                        <li>
-                                            <div class="flex justify-between items-center">
-                                                <span><span class="font-semibold">${item.quantity}</span> x ${item.productName}</span>
-                                                ${item.stockBefore !== undefined ? `<span class="text-xs text-gray-500 font-mono">Stock: ${item.stockBefore} → ${item.stockAfter}</span>` : ''}
-                                            </div>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            lucide.createIcons();
-        }
-        
-        function renderMovementForm(formType) {
-            const container = document.getElementById(`${formType}-items-container`);
-            const searchInput = document.getElementById(`${formType}-search`);
-            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-            
-            const filtered = productsCache.filter(p => p.name.toLowerCase().includes(searchTerm));
-            
-            container.innerHTML = filtered.length === 0 ? `<p class="text-center text-gray-500 py-4">No se encontraron productos.</p>` : filtered.map(p => {
-                const quantity = currentMovementQuantities.get(p.id) || '';
-                return `
-                <div class="grid grid-cols-3 gap-4 items-center">
-                    <label for="${formType}-${p.id}" class="col-span-2 text-gray-700">${p.name} (Stock: ${p.stock})</label>
-                    <input type="number" value="${quantity}" data-product-id="${p.id}" min="0" placeholder="0" class="movement-quantity-input col-span-1 p-2 border border-gray-300 rounded-lg w-full">
-                </div>
-                `
-            }).join('');
-        }
+document.getElementById('add-product-form').addEventListener('submit', async e => { e.preventDefault(); try{ const form=e.target; const resp=form.querySelector('.responsible-select')?.value; if(!resp) return showAlert('Seleccioná un responsable.'); let categoryId=document.getElementById('add-product-category').value; const newCat=document.getElementById('new-category-name').value.trim(); if(categoryId==='new'){ if(!newCat) return showAlert('Escribí el nombre de la nueva categoría.'); categoryId=await saveNewCategory(newCat); } if(!categoryId) return showAlert('Seleccioná una categoría.'); const name=document.getElementById('add-product-name').value.trim(); if(!name) return showAlert('Escribí el nombre del producto.'); const data={ name, stock:Number(document.getElementById('add-initial-stock').value)||0, reorderThreshold:document.getElementById('add-reorder-threshold').value===''?null:Number(document.getElementById('add-reorder-threshold').value), iconName:document.getElementById('add-product-icon-name').value.trim()||'package', iconBgColor:document.getElementById('add-product-icon-bg').value, iconColor:document.getElementById('add-product-icon-color').value, unit:document.getElementById('add-product-unit').value, categoryId, category:getSelectedCategoryName(categoryId)||newCat, createdBy:resp, createdAt:Timestamp.now()}; await addDoc(col(PRIMARY.products), data); form.reset(); closeModal(document.getElementById('add-product-modal')); showAlert('Producto guardado correctamente.'); } catch(err){ console.error(err); showAlert('No se pudo guardar. Revisá conexión/permisos de Firebase.'); } });
 
-        function renderResponsibleSection(container, selectedResponsible = '') {
-            container.innerHTML = `
-                <div class="border-t pt-4">
-                    <label class="block text-gray-700 font-medium mb-2">Responsable</label>
-                    <div class="flex gap-2">
-                        <select required class="responsible-select w-full p-3 border border-gray-300 rounded-lg">
-                            <option value="">Seleccionar persona...</option>
-                            ${peopleCache.map(p => `<option value="${p.name}" ${p.name === selectedResponsible ? 'selected' : ''}>${p.name}</option>`).join('')}
-                        </select>
-                        <input type="text" class="new-person-input p-3 border border-gray-300 rounded-lg" placeholder="Nueva persona">
-                        <button type="button" class="add-person-btn bg-gray-600 text-white px-4 rounded-lg hover:bg-gray-700 font-bold">+</button>
-                    </div>
-                </div>
-            `;
-        }
+document.getElementById('inventory-container').addEventListener('click', async e => { const edit=e.target.closest('.adjust-stock-btn'); const del=e.target.closest('.delete-product-btn'); if(edit){ const p=productsCache.find(x=>x.id===edit.dataset.id); if(!p) return; document.getElementById('adjust-stock-product-id').value=p.id; document.getElementById('adjust-product-name').value=nameOf(p); document.getElementById('new-stock-quantity').value=Number(p.stock)||0; document.getElementById('adjust-reorder-threshold').value=(p.reorderThreshold??''); document.getElementById('adjust-product-icon-name').value=p.iconName||'package'; document.getElementById('adjust-product-icon-bg').value=p.iconBgColor||'#e5e7eb'; document.getElementById('adjust-product-icon-color').value=p.iconColor||'#1f2937'; document.getElementById('adjust-product-unit').value=p.unit||'unidades'; document.getElementById('adjust-product-category').value=p.categoryId||''; openModal(document.getElementById('adjust-stock-modal')); } if(del){ const p=productsCache.find(x=>x.id===del.dataset.id); if(p && confirm(`¿Eliminar ${nameOf(p)}?`)) await deleteDoc(refFromPath(docPath(p))); } });
 
-        function populateCategoryDropdowns(categories) {
-            const optionsHtml = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            document.getElementById('adjust-product-category').innerHTML = optionsHtml;
-            document.getElementById('add-product-category').innerHTML = `<option value="">Seleccionar categoría...</option>${optionsHtml}<option value="new">-- Crear Nueva Categoría --</option>`;
-        }
-        
-        const careerPresets = {
-            'AE': { iconName: 'briefcase-business', iconBgColor: '#8DA248', iconColor: '#ffffff' },
-            'ASC': { iconName: 'computer', iconBgColor: '#00B1E1', iconColor: '#ffffff' },
-            'HYS': { iconName: 'hard-hat', iconBgColor: '#FCC01E', iconColor: '#ffffff' },
-            'RH': { iconName: 'users-round', iconBgColor: '#B388C2', iconColor: '#ffffff' },
-            'DW': { iconName: 'code-xml', iconBgColor: '#A8927D', iconColor: '#ffffff' },
-            'GI': { iconName: 'gavel', iconBgColor: '#BB242A', iconColor: '#ffffff' },
-            'IA': { iconName: 'bot', iconBgColor: '#2D4693', iconColor: '#ffffff' },
-            'MKT': { iconName: 'megaphone', iconBgColor: '#FA5D0F', iconColor: '#ffffff' }
-        };
+document.getElementById('adjust-stock-form').addEventListener('submit', async e => { e.preventDefault(); try{ const id=document.getElementById('adjust-stock-product-id').value; const p=productsCache.find(x=>x.id===id); if(!p) return showAlert('No encontré el producto para actualizar.'); const categoryId=document.getElementById('adjust-product-category').value; const data={ name:document.getElementById('adjust-product-name').value.trim(), stock:Number(document.getElementById('new-stock-quantity').value)||0, reorderThreshold:document.getElementById('adjust-reorder-threshold').value===''?null:Number(document.getElementById('adjust-reorder-threshold').value), iconName:document.getElementById('adjust-product-icon-name').value.trim()||'package', iconBgColor:document.getElementById('adjust-product-icon-bg').value, iconColor:document.getElementById('adjust-product-icon-color').value, unit:document.getElementById('adjust-product-unit').value, categoryId, category:getSelectedCategoryName(categoryId)}; await updateDoc(refFromPath(docPath(p)), data); closeModal(document.getElementById('adjust-stock-modal')); } catch(err){ console.error(err); showAlert('No se pudo actualizar el producto.'); } });
 
-        document.getElementById('add-product-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const responsible = form.querySelector('.responsible-select').value;
-            if (!responsible) {
-                showAlert('Por favor, selecciona un responsable.');
-                return;
-            }
-            
-            let categoryId = document.getElementById('add-product-category').value;
-            const productName = document.getElementById('add-product-name').value.trim();
-            const newCategoryName = document.getElementById('new-category-name').value.trim();
+async function handleMovement(e,type){ e.preventDefault(); try{ const isExit=type==='exit'; const form=e.target; const resp=form.querySelector('.responsible-select')?.value; if(!resp) return showAlert('Seleccioná un responsable.'); const items=[]; currentMovementQuantities.forEach((q,id)=>{ const p=productsCache.find(x=>x.id===id); if(!p || q<=0) return; const before=Number(p.stock)||0; const after=isExit?before-q:before+q; if(isExit && after<0) throw new Error(`Sin stock suficiente de ${nameOf(p)}.`); items.push({productId:id, productName:nameOf(p), quantity:q, stockBefore:before, stockAfter:after, productPath:docPath(p)}); }); if(!items.length) return showAlert('Indicá al menos una cantidad.'); const batch=writeBatch(db); items.forEach(i=>batch.update(refFromPath(i.productPath), {stock:i.stockAfter})); const dateStr=document.getElementById(`${type}-date`).value; batch.set(doc(col(PRIMARY.movements)), { type:isExit?'exit':'entry', reason:document.getElementById(`${type}-reason`).value, responsible:resp, items, movementDate:Timestamp.fromDate(new Date(dateStr+'T00:00:00')), createdAt:Timestamp.now() }); await batch.commit(); currentMovementQuantities.clear(); form.reset(); closeModal(document.getElementById(isExit?'register-exit-modal':'register-entry-modal')); } catch(err){ console.error(err); showAlert(err.message || 'No se pudo registrar el movimiento.'); } }
+document.getElementById('register-entry-form').addEventListener('submit', e=>handleMovement(e,'entry'));
+document.getElementById('register-exit-form').addEventListener('submit', e=>handleMovement(e,'exit'));
 
-            if (categoryId === 'new') {
-                if (!newCategoryName) {
-                    showAlert('El nombre de la nueva categoría no puede estar vacío.');
-                    return;
-                }
-                const newCatRef = await addDoc(categoriesCollection, { name: newCategoryName });
-                categoryId = newCatRef.id;
-            } else if (!categoryId) {
-                showAlert('Por favor, selecciona una categoría.');
-                return;
-            }
+function exportExcel(){
+  const stock=productsCache.map(p=>({ID:p.id, Ruta:p.__path, Categoría:productCategoryName(p), Producto:nameOf(p), Stock:Number(p.stock)||0, Unidad:p.unit||'unidades', Aviso_reposicion:threshold(p), Icono:p.iconName||'', Color_fondo:p.iconBgColor||'', Color_icono:p.iconColor||''}));
+  const cats=categoriesCache.map(c=>({ID:c.id, Ruta:c.__path, Categoría:catName(c)}));
+  const people=peopleCache.map(p=>({ID:p.id, Ruta:p.__path, Responsable:p.name||''}));
+  const hist=movementsCache.flatMap(m=>(m.items||[]).map(i=>({ID_movimiento:m.id, Ruta:m.__path, Fecha:fmtDate(m), Tipo:m.type==='entry'?'Entrada':'Salida', Motivo:m.reason||'', Responsable:m.responsible||'', Producto:i.productName||'', Cantidad:i.quantity||0, Stock_antes:i.stockBefore??'', Stock_despues:i.stockAfter??''})));
+  const wb=XLSX.utils.book_new();
+  [['Stock Actual',stock],['Categorías',cats],['Responsables',people],['Historial Completo',hist],['Registros Entradas',hist.filter(x=>x.Tipo==='Entrada')],['Registros Salidas',hist.filter(x=>x.Tipo==='Salida')],['Leer antes de importar',[{Aviso:'Backup completo generado desde el sistema. Importar actualiza/crea productos, no borra automáticamente.'}]]].forEach(([n,data])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),n));
+  XLSX.writeFile(wb,`Backup_Inventario_${getToday()}.xlsx`);
+}
+document.getElementById('export-excel-btn').addEventListener('click', exportExcel);
 
-            if (productName) {
-                const productData = {
-                    name: productName,
-                    stock: parseInt(document.getElementById('add-initial-stock').value, 10),
-                    iconName: document.getElementById('add-product-icon-name').value.trim(),
-                    iconBgColor: document.getElementById('add-product-icon-bg').value,
-                    iconColor: document.getElementById('add-product-icon-color').value,
-                    unit: document.getElementById('add-product-unit').value,
-                    createdBy: responsible,
-                    categoryId: categoryId
-                };
+document.getElementById('import-backup-input').addEventListener('change', async e => { const file=e.target.files[0]; if(!file) return; try{ const data=await file.arrayBuffer(); const wb=XLSX.read(data); const rows=XLSX.utils.sheet_to_json(wb.Sheets['Stock Actual'] || wb.Sheets[wb.SheetNames[0]]); if(!rows.length) return showAlert('El Excel no tiene productos para importar.'); const batch=writeBatch(db); rows.forEach(r=>{ const payload={ name:r.Producto||r.producto||r.Nombre, stock:Number(r.Stock||r['Stock Actual']||0), unit:r.Unidad||'unidades', reorderThreshold:r.Aviso_reposicion===''?null:Number(r.Aviso_reposicion||100), iconName:r.Icono||'package', iconBgColor:r.Color_fondo||'#e5e7eb', iconColor:r.Color_icono||'#1f2937', category:r.Categoría||r.Categoria||'Sin categoría', importedAt:Timestamp.now() }; if(payload.name) batch.set(doc(col(PRIMARY.products)), payload); }); await batch.commit(); showAlert('Backup importado. Los productos fueron agregados/recuperados.'); } catch(err){ console.error(err); showAlert('No se pudo importar el backup.'); } finally { e.target.value=''; } });
 
-                for (const key in careerPresets) {
-                    if (productName.toUpperCase().includes(key)) {
-                        productData.iconName = careerPresets[key].iconName;
-                        productData.iconBgColor = careerPresets[key].iconBgColor;
-                        productData.iconColor = careerPresets[key].iconColor;
-                        break; 
-                    }
-                }
-
-                await addDoc(productsCollection, productData);
-            }
-
-            form.reset();
-            document.getElementById('new-category-fields').classList.add('hidden');
-            document.getElementById('product-fields').style.display = 'block';
-            closeModal(modals.addProduct);
-        });
-
-        document.getElementById('adjust-stock-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('adjust-stock-product-id').value;
-            const updatedData = {
-                name: document.getElementById('adjust-product-name').value,
-                stock: parseInt(document.getElementById('new-stock-quantity').value, 10),
-                iconName: document.getElementById('adjust-product-icon-name').value,
-                iconBgColor: document.getElementById('adjust-product-icon-bg').value,
-                iconColor: document.getElementById('adjust-product-icon-color').value,
-                unit: document.getElementById('adjust-product-unit').value,
-                categoryId: document.getElementById('adjust-product-category').value
-            };
-            await updateDoc(doc(productsCollection, id), updatedData);
-            closeModal(modals.adjustStock);
-        });
-
-        document.getElementById('edit-category-form').addEventListener('submit', async(e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-category-id').value;
-            const newName = document.getElementById('edit-category-name').value.trim();
-            if (newName) {
-                await updateDoc(doc(categoriesCollection, id), { name: newName });
-                closeModal(modals.editCategory);
-            }
-        });
-        
-        async function handleMovementSubmit(e, formType) {
-            e.preventDefault();
-            const isExit = formType.includes('exit');
-            const form = e.target;
-            const responsible = form.querySelector('.responsible-select').value;
-            if (!responsible) {
-                showAlert('Por favor, selecciona un responsable.');
-                return;
-            }
-
-            const movementItems = [];
-            currentMovementQuantities.forEach((quantity, productId) => {
-                if (quantity > 0) {
-                    const product = productsCache.find(p => p.id === productId);
-                    const stockBefore = product.stock;
-                    const stockAfter = isExit ? stockBefore - quantity : stockBefore + quantity;
-                    movementItems.push({ 
-                        productId: product.id, 
-                        productName: product.name, 
-                        quantity,
-                        stockBefore,
-                        stockAfter
-                    });
-                }
-            });
-            
-            if (movementItems.length > 0) {
-                const batch = writeBatch(db);
-                movementItems.forEach(item => {
-                     batch.update(doc(productsCollection, item.productId), { stock: item.stockAfter });
-                });
-                
-                const reason = form.querySelector(`#${formType}-reason`).value;
-                const dateString = form.querySelector(`#${formType}-date`).value;
-                const movementDate = Timestamp.fromDate(new Date(dateString + 'T00:00:00'));
-
-                const movementData = { items: movementItems, movementDate, type: isExit ? 'exit' : 'entry', responsible, reason };
-                batch.set(doc(movementsCollection), movementData);
-                
-                await batch.commit();
-            }
-            form.reset();
-            currentMovementQuantities.clear();
-            closeModal(isExit ? modals.registerExit : modals.registerEntry);
-        }
-
-        document.getElementById('edit-movement-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const movementId = form.querySelector('#edit-movement-id').value;
-            const movementType = form.querySelector('#edit-movement-type').value;
-            const originalItems = JSON.parse(form.querySelector('#original-movement-items').value);
-            const responsible = form.querySelector('.responsible-select').value;
-            const reason = form.querySelector('#edit-movement-reason').value;
-            const dateString = form.querySelector('#edit-movement-date').value;
-            const movementDate = Timestamp.fromDate(new Date(dateString + 'T00:00:00'));
-
-            const newItems = [];
-            currentMovementQuantities.forEach((quantity, productId) => {
-                 if (quantity > 0) {
-                    const product = productsCache.find(p => p.id === productId);
-                    newItems.push({ productId: product.id, productName: product.name, quantity });
-                }
-            });
-
-            const stockChanges = new Map();
-            originalItems.forEach(item => {
-                const change = movementType === 'exit' ? item.quantity : -item.quantity;
-                stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
-            });
-            newItems.forEach(item => {
-                const change = movementType === 'exit' ? -item.quantity : item.quantity;
-                stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
-            });
-            
-            const batch = writeBatch(db);
-            const newItemsWithStock = [];
-
-            for (const [productId, change] of stockChanges.entries()) {
-                const product = productsCache.find(p => p.id === productId);
-                if(product) {
-                    const newStock = product.stock + change;
-                    batch.update(doc(productsCollection, productId), { stock: newStock });
-                }
-            }
-
-            for(const item of newItems) {
-                const product = productsCache.find(p => p.id === item.productId);
-                const originalItem = originalItems.find(oi => oi.productId === item.productId);
-                let stockBefore = product ? product.stock : (originalItem ? originalItem.stockBefore : 0);
-                
-                const originalChange = originalItems.find(oi => oi.productId === item.productId)?.quantity || 0;
-                if (movementType === 'exit') stockBefore += originalChange;
-                else stockBefore -= originalChange;
-
-                const stockAfter = movementType === 'exit' ? stockBefore - item.quantity : stockBefore + item.quantity;
-                newItemsWithStock.push({...item, stockBefore, stockAfter});
-            }
-
-            const updatedMovementData = { items: newItemsWithStock, responsible, reason, movementDate, type: movementType };
-            batch.update(doc(movementsCollection, movementId), updatedMovementData);
-
-            await batch.commit();
-            currentMovementQuantities.clear();
-            closeModal(modals.editMovement);
-        });
-
-        function exportToExcel() {
-            const stockData = productsCache.map(p => {
-                const category = categoriesCache.find(c => c.id === p.categoryId);
-                return { 'Categoría': category ? category.name : 'N/A', 'Producto': p.name, 'Stock Actual': p.stock, 'Unidad': p.unit || 'unidades' };
-            });
-            const stockSheet = XLSX.utils.json_to_sheet(stockData);
-            stockSheet['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 15 }, { wch: 15 }];
-            
-            const historyData = movementsCache.flatMap(mov => mov.items.map(item => {
-                const dateField = mov.movementDate || mov.timestamp;
-                const dateString = dateField ? new Date(dateField.seconds * 1000).toLocaleDateString() : 'N/A';
-                return { 'Motivo/Evento': mov.reason, 'Responsable': mov.responsible, 'Fecha': dateString, 'Tipo': mov.type === 'entry' ? 'Entrada' : 'Salida', 'Producto': item.productName, 'Cantidad': item.quantity, 'Stock Antes': item.stockBefore, 'Stock Después': item.stockAfter }
-            }));
-
-            const historySheet = XLSX.utils.json_to_sheet(historyData);
-            historySheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 50 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, stockSheet, "Stock Actual");
-            XLSX.utils.book_append_sheet(wb, historySheet, "Historial de Movimientos");
-            XLSX.writeFile(wb, "Reporte_Inventario.xlsx");
-        }
-
-        document.getElementById('add-product-category').addEventListener('change', (e) => {
-            const isNew = e.target.value === 'new';
-            document.getElementById('new-category-fields').classList.toggle('hidden', !isNew);
-            document.getElementById('product-fields').style.display = isNew ? 'none' : 'block';
-        });
-
-        ['entry', 'exit', 'edit-movement'].forEach(formType => {
-            const container = document.getElementById(`${formType}-items-container`);
-            if (container) {
-                container.addEventListener('input', e => {
-                    if (e.target.classList.contains('movement-quantity-input')) {
-                        const productId = e.target.dataset.productId;
-                        const quantity = parseInt(e.target.value, 10);
-                        if (quantity > 0) {
-                            currentMovementQuantities.set(productId, quantity);
-                        } else {
-                            currentMovementQuantities.delete(productId);
-                        }
-                    }
-                });
-            }
-        });
-
-        document.getElementById('register-exit-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'exit'));
-        document.getElementById('register-entry-form').addEventListener('submit', (e) => handleMovementSubmit(e, 'entry'));
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('add-person-btn')) {
-                const input = e.target.previousElementSibling;
-                const newName = input.value.trim();
-                if (newName && !peopleCache.some(p => p.name === newName)) {
-                    addDoc(peopleCollection, { name: newName });
-                    input.value = '';
-                }
-            }
-        });
-        
-        document.getElementById('inventory-container').addEventListener('click', (e) => {
-            const catHeader = e.target.closest('.category-header');
-            if(catHeader) {
-                const editBtn = e.target.closest('.edit-category-btn');
-                const deleteBtn = e.target.closest('.delete-category-btn');
-
-                if (editBtn) {
-                    e.stopPropagation();
-                    const categoryId = editBtn.dataset.id;
-                    const category = categoriesCache.find(c => c.id === categoryId);
-                    document.getElementById('edit-category-id').value = category.id;
-                    document.getElementById('edit-category-name').value = category.name;
-                    openModal(modals.editCategory);
-                    return;
-                }
-
-                if(deleteBtn) {
-                    e.stopPropagation();
-                    const categoryId = deleteBtn.dataset.id;
-                    const productsInCategory = productsCache.filter(p => p.categoryId === categoryId);
-                    if (productsInCategory.length > 0) {
-                        showAlert('No se puede eliminar una categoría que contiene productos. Mueve o elimina los productos primero.');
-                    } else {
-                        showConfirm('¿Estás seguro de que quieres eliminar esta categoría?', () => {
-                            deleteDoc(doc(categoriesCollection, categoryId));
-                        });
-                    }
-                    return;
-                }
-
-                const categoryId = catHeader.dataset.id;
-                if (expandedCategories.has(categoryId)) {
-                    expandedCategories.delete(categoryId);
-                } else {
-                    expandedCategories.add(categoryId);
-                }
-                renderInventory();
-                return;
-            }
-
-            const sortBtn = e.target.closest('.sort-btn');
-            if (sortBtn) {
-                const categoryId = sortBtn.dataset.categoryId;
-                const key = sortBtn.dataset.key;
-                const currentConfig = categorySortConfigs[categoryId] || { key: 'name', direction: 'asc' };
-                if (currentConfig.key === key) {
-                    categorySortConfigs[categoryId].direction = currentConfig.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    categorySortConfigs[categoryId] = { key: key, direction: 'asc' };
-                }
-                renderInventory();
-            }
-        });
-
-        document.getElementById('movements-history').addEventListener('click', (e) => {
-             const movHeader = e.target.closest('.movement-header');
-             if (movHeader) {
-                const movementId = movHeader.dataset.id;
-                if (expandedMovements.has(movementId)) {
-                    expandedMovements.delete(movementId);
-                } else {
-                    expandedMovements.add(movementId);
-                }
-                 renderMovements();
-             }
-
-             const editBtn = e.target.closest('.edit-movement-btn');
-             if(editBtn) {
-                const movement = movementsCache.find(m => m.id === editBtn.dataset.id);
-                currentMovementQuantities.clear();
-                movement.items.forEach(item => currentMovementQuantities.set(item.productId, item.quantity));
-
-                document.getElementById('edit-movement-id').value = movement.id;
-                document.getElementById('edit-movement-type').value = movement.type;
-                document.getElementById('original-movement-items').value = JSON.stringify(movement.items);
-                document.getElementById('edit-movement-reason').value = movement.reason;
-                const dateField = movement.movementDate || movement.timestamp;
-                const date = dateField ? new Date(dateField.seconds * 1000).toISOString().split('T')[0] : getTodayDateString();
-                document.getElementById('edit-movement-date').value = date;
-
-                renderResponsibleSection(modals.editMovement.querySelector('.responsible-section-container'), movement.responsible);
-                renderMovementForm('edit-movement');
-                openModal(modals.editMovement);
-             }
-
-             const deleteBtn = e.target.closest('.delete-movement-btn');
-             if (deleteBtn) {
-                showConfirm('¿Estás seguro? Esta acción revertirá el stock y eliminará el registro permanentemente.', () => {
-                    const movement = movementsCache.find(m => m.id === deleteBtn.dataset.id);
-                    const batch = writeBatch(db);
-                    movement.items.forEach(item => {
-                        const product = productsCache.find(p => p.id === item.productId);
-                        if(product) {
-                            const newStock = movement.type === 'exit' ? product.stock + item.quantity : product.stock - item.quantity;
-                            batch.update(doc(productsCollection, item.productId), { stock: newStock });
-                        }
-                    });
-                    batch.delete(doc(movementsCollection, movement.id));
-                    batch.commit();
-                });
-             }
-        });
-
-        async function main() {
-            await signInAnonymously(auth);
-            
-            onSnapshot(query(categoriesCollection), snap => { 
-                categoriesCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
-                populateCategoryDropdowns(categoriesCache);
-                renderInventory();
-            });
-            onSnapshot(productsCollection, snap => { 
-                productsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
-                renderInventory(); 
-            });
-            onSnapshot(query(movementsCollection, orderBy("movementDate", "desc")), snap => {
-                movementsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                renderMovements();
-            });
-            onSnapshot(peopleCollection, snap => {
-                peopleCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name));
-                document.querySelectorAll('.responsible-section-container').forEach(c => renderResponsibleSection(c));
-            });
-            
-            await seedData();
-            
-            document.getElementById('inventory-container').addEventListener('click', (e) => {
-                const adjustBtn = e.target.closest('.adjust-stock-btn');
-                const deleteBtn = e.target.closest('.delete-product-btn');
-                if (adjustBtn) {
-                    const product = productsCache.find(p => p.id === adjustBtn.dataset.id);
-                    document.getElementById('adjust-stock-product-id').value = product.id;
-                    document.getElementById('adjust-product-name').value = product.name;
-                    document.getElementById('new-stock-quantity').value = product.stock;
-                    document.getElementById('adjust-product-icon-name').value = product.iconName || '';
-                    document.getElementById('adjust-product-icon-bg').value = product.iconBgColor || '#e5e7eb';
-                    document.getElementById('adjust-product-icon-color').value = product.iconColor || '#1f2937';
-                    document.getElementById('adjust-product-unit').value = product.unit || 'unidades';
-                    document.getElementById('adjust-product-category').value = product.categoryId;
-                    openModal(modals.adjustStock);
-                }
-                if (deleteBtn) {
-                    showConfirm('¿Estás seguro de que quieres eliminar este producto? Esto no afectará los registros históricos.', () => {
-                        deleteDoc(doc(productsCollection, deleteBtn.dataset.id));
-                    });
-                }
-            });
-
-            document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
-            ['entry', 'exit', 'edit-movement'].forEach(type => {
-                const searchInput = document.getElementById(`${type}-search`);
-                if (searchInput) searchInput.addEventListener('input', () => renderMovementForm(type));
-            });
-            
-            lucide.createIcons();
-        }
-        main();
-    </script>
+async function main(){
+  try { await signInAnonymously(auth); } catch(e){ errors.push('Auth: '+(e.code||e.message)); }
+  subscribeKind('categories', PATHS.categories);
+  subscribeKind('products', PATHS.products);
+  subscribeKind('movements', PATHS.movements);
+  subscribeKind('people', PATHS.people);
+  try { await seedIfEmpty(); } catch(e){ errors.push('Seed: '+(e.code||e.message)); }
+  setTimeout(()=>{ if(!productsCache.length) setStatus(); }, 3000);
+  safeIcons();
+}
+main();
+</script>
 </body>
-
 </html>
-
