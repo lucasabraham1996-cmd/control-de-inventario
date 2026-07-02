@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Control de Inventario y Stock</title>
   <link rel="icon" type="image/x-icon" href="https://lucasabraham1996-cmd.github.io/control-de-inventario/favicon.ico">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="text/javascript" src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js?attr=etqQGHpV6OMdUc0JlWnxX1JhqFlUvDq156OR8z-WfbYMtw1BKXkOYiGVlBnI-UsoaeI7cMiIsUziGHajqb_tQtsPfTL06KKDbi8gUGwwd30" charset="UTF-8"></script><script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -393,10 +395,22 @@ function populateDropdowns(){
   document.getElementById('add-product-category').innerHTML = `<option value="">Seleccionar categoría...</option>${opts}<option value="new">-- Crear nueva categoría --</option>`;
   document.getElementById('adjust-product-category').innerHTML = opts || `<option value="sin_categoria">Sin categoría</option>`;
 }
-function renderResponsibleSections(){ document.querySelectorAll('.responsible-section-container').forEach(c => { if(c.dataset.rendered && c.querySelector('select')) return; renderResponsibleSection(c); }); }
+function getPersonName(p){ return String(p?.name || p?.Nombre || p?.responsable || p?.Responsable || '').trim(); }
+function renderResponsibleSections(){
+  document.querySelectorAll('.responsible-section-container').forEach(c => {
+    const selected = c.querySelector('.responsible-select')?.value || '';
+    renderResponsibleSection(c, selected);
+  });
+}
 function renderResponsibleSection(c, selected=''){
   c.dataset.rendered='1';
-  c.innerHTML = `<label class="block text-sm font-black text-slate-600 mb-2">Responsable</label><div class="flex gap-2"><select required class="responsible-select w-full p-3 border border-slate-200 rounded-2xl bg-white"><option value="">Seleccionar persona...</option>${peopleCache.map(p=>`<option value="${esc(p.name)}" ${p.name===selected?'selected':''}>${esc(p.name)}</option>`).join('')}</select><input class="new-person-input p-3 border border-slate-200 rounded-2xl" placeholder="Nueva persona"><button type="button" class="add-person-btn soft-btn bg-slate-800 text-white px-4">+</button></div>`;
+  const peopleOptions = peopleCache
+    .map(p => getPersonName(p))
+    .filter(Boolean)
+    .filter((name, index, arr) => arr.indexOf(name) === index)
+    .map(name => `<option value="${esc(name)}" ${name===selected?'selected':''}>${esc(name)}</option>`)
+    .join('');
+  c.innerHTML = `<label class="block text-sm font-black text-slate-600 mb-2">Responsable</label><div class="flex gap-2"><select required class="responsible-select w-full p-3 border border-slate-200 rounded-2xl bg-white"><option value="">Seleccionar persona...</option>${peopleOptions}</select><input class="new-person-input p-3 border border-slate-200 rounded-2xl" placeholder="Nueva persona"><button type="button" class="add-person-btn soft-btn bg-slate-800 text-white px-4">+</button></div>`;
 }
 
 function productBelongs(p,c){ return (p.categoryId && p.categoryId === c.id) || (p.category && p.category === catName(c)) || (!p.categoryId && !p.category && c.id === '__sin_categoria__'); }
