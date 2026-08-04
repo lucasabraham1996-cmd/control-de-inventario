@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Control de Inventario y Stock</title>
   <link rel="icon" type="image/x-icon" href="https://lucasabraham1996-cmd.github.io/control-de-inventario/favicon.ico">
-  <script type="text/javascript" src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js?attr=etqQGHpV6OMdUc0JlWnxX1JhqFlUvDq156OR8z-WfbYMtw1BKXkOYiGVlBnI-UsoaeI7cMiIsUziGHajqb_tQtsPfTL06KKDbi8gUGwwd30" charset="UTF-8"></script><script src="https://cdn.tailwindcss.com"></script>
+  <script type="text/javascript" src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js?attr=u2lJzELRhSxMzmmmKBhCeKdo7SghU3TA0b6j_9XoItWvNUdcPiumJeoTb5bK6TVJxiM8_Z1K9oV4Ck8wNIJxD2e7_AM-SisAZM32RWnlThE" charset="UTF-8"></script><script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -395,22 +394,34 @@ function populateDropdowns(){
   document.getElementById('add-product-category').innerHTML = `<option value="">Seleccionar categoría...</option>${opts}<option value="new">-- Crear nueva categoría --</option>`;
   document.getElementById('adjust-product-category').innerHTML = opts || `<option value="sin_categoria">Sin categoría</option>`;
 }
-function getPersonName(p){ return String(p?.name || p?.Nombre || p?.responsable || p?.Responsable || '').trim(); }
 function renderResponsibleSections(){
   document.querySelectorAll('.responsible-section-container').forEach(c => {
     const selected = c.querySelector('.responsible-select')?.value || '';
-    renderResponsibleSection(c, selected);
+    const typedName = c.querySelector('.new-person-input')?.value || '';
+    renderResponsibleSection(c, selected, typedName);
   });
 }
-function renderResponsibleSection(c, selected=''){
+function renderResponsibleSection(c, selected='', typedName=''){
+  const uniquePeople = [...new Map(
+    peopleCache
+      .filter(p => String(p?.name || '').trim())
+      .map(p => [String(p.name).trim().toLowerCase(), String(p.name).trim()])
+  ).values()].sort((a,b)=>a.localeCompare(b,'es'));
+
   c.dataset.rendered='1';
-  const peopleOptions = peopleCache
-    .map(p => getPersonName(p))
-    .filter(Boolean)
-    .filter((name, index, arr) => arr.indexOf(name) === index)
-    .map(name => `<option value="${esc(name)}" ${name===selected?'selected':''}>${esc(name)}</option>`)
-    .join('');
-  c.innerHTML = `<label class="block text-sm font-black text-slate-600 mb-2">Responsable</label><div class="flex gap-2"><select required class="responsible-select w-full p-3 border border-slate-200 rounded-2xl bg-white"><option value="">Seleccionar persona...</option>${peopleOptions}</select><input class="new-person-input p-3 border border-slate-200 rounded-2xl" placeholder="Nueva persona"><button type="button" class="add-person-btn soft-btn bg-slate-800 text-white px-4">+</button></div>`;
+  c.innerHTML = `<label class="block text-sm font-black text-slate-600 mb-2">A cargo de quién</label>
+    <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2">
+      <select required class="responsible-select w-full p-3 border border-slate-200 rounded-2xl bg-white">
+        <option value="">Seleccionar persona...</option>
+        ${uniquePeople.map(name=>`<option value="${esc(name)}" ${name===selected?'selected':''}>${esc(name)}</option>`).join('')}
+      </select>
+      <input class="new-person-input p-3 border border-slate-200 rounded-2xl" value="${esc(typedName)}" placeholder="Escribir nueva persona">
+      <button type="button" class="add-person-btn soft-btn bg-slate-800 text-white px-4 py-3 flex items-center justify-center gap-2" title="Agregar persona">
+        <i data-lucide="user-plus" class="w-4 h-4"></i><span>Agregar</span>
+      </button>
+    </div>
+    <p class="responsible-help text-xs text-slate-500 mt-2">Seleccioná una persona existente o escribí un nombre y presioná Agregar.</p>`;
+  safeIcons();
 }
 
 function productBelongs(p,c){ return (p.categoryId && p.categoryId === c.id) || (p.category && p.category === catName(c)) || (!p.categoryId && !p.category && c.id === '__sin_categoria__'); }
@@ -540,7 +551,14 @@ async function seedIfEmpty(){
 }
 
 async function saveNewCategory(name){ const r = await addDoc(col(PRIMARY.categories), { name, createdAt: Timestamp.now() }); return r.id; }
-async function addPerson(name){ await addDoc(col(PRIMARY.people), { name }); }
+async function addPerson(name){
+  const cleanName = String(name || '').trim();
+  if(!cleanName) throw new Error('Escribí el nombre de la persona.');
+  const exists = peopleCache.some(p => String(p.name || '').trim().toLowerCase() === cleanName.toLowerCase());
+  if(exists) return { name: cleanName, alreadyExists: true };
+  const result = await addDoc(col(PRIMARY.people), { name: cleanName, createdAt: Timestamp.now() });
+  return { id: result.id, name: cleanName, alreadyExists: false };
+}
 
 function getSelectedCategoryName(id){ const c=categoriesCache.find(x=>x.id===id); return c ? catName(c) : ''; }
 
@@ -569,7 +587,35 @@ document.getElementById('notification-read-modal').addEventListener('click', e =
 document.getElementById('open-add-product-modal').addEventListener('click',()=>openModal(document.getElementById('add-product-modal')));
 document.getElementById('open-register-entry-modal').addEventListener('click',()=>{ currentMovementQuantities.clear(); document.getElementById('entry-date').value=getToday(); renderMovementForm('entry'); openModal(document.getElementById('register-entry-modal')); });
 document.getElementById('open-register-exit-modal').addEventListener('click',()=>{ currentMovementQuantities.clear(); document.getElementById('exit-date').value=getToday(); renderMovementForm('exit'); openModal(document.getElementById('register-exit-modal')); });
-document.addEventListener('click', async e => { if(e.target.closest('.add-person-btn')){ const wrap=e.target.closest('div'); const input=wrap.querySelector('.new-person-input'); const name=input.value.trim(); if(name){ await addPerson(name); input.value=''; } } });
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('.add-person-btn');
+  if(!btn) return;
+  const section = btn.closest('.responsible-section-container');
+  if(!section) return;
+  const input = section.querySelector('.new-person-input');
+  const select = section.querySelector('.responsible-select');
+  const help = section.querySelector('.responsible-help');
+  const name = input?.value.trim() || '';
+  if(!name) return showAlert('Escribí el nombre de la persona que querés agregar.');
+
+  btn.disabled = true;
+  btn.classList.add('opacity-60','cursor-not-allowed');
+  try {
+    await addPerson(name);
+    if(![...select.options].some(o => o.value.toLowerCase() === name.toLowerCase())){
+      select.add(new Option(name, name));
+    }
+    select.value = [...select.options].find(o => o.value.toLowerCase() === name.toLowerCase())?.value || name;
+    input.value = '';
+    if(help){ help.textContent = `${name} quedó seleccionado/a para este movimiento.`; help.className='responsible-help text-xs text-emerald-700 font-bold mt-2'; }
+  } catch(err){
+    console.error(err);
+    showAlert('No se pudo crear la persona. Revisá los permisos de Firebase para la colección de responsables.');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('opacity-60','cursor-not-allowed');
+  }
+});
 ['entry','exit'].forEach(type=>{ document.getElementById(`${type}-search`).addEventListener('input',()=>renderMovementForm(type)); document.getElementById(`${type}-items-container`).addEventListener('input', e=>{ if(e.target.classList.contains('movement-quantity-input')){ const q=parseInt(e.target.value,10); const id=e.target.dataset.productId; if(q>0) currentMovementQuantities.set(id,q); else currentMovementQuantities.delete(id); } }); });
 
 document.getElementById('add-product-form').addEventListener('submit', async e => { e.preventDefault(); try{ const form=e.target; const resp=form.querySelector('.responsible-select')?.value; if(!resp) return showAlert('Seleccioná un responsable.'); let categoryId=document.getElementById('add-product-category').value; const newCat=document.getElementById('new-category-name').value.trim(); if(categoryId==='new'){ if(!newCat) return showAlert('Escribí el nombre de la nueva categoría.'); categoryId=await saveNewCategory(newCat); } if(!categoryId) return showAlert('Seleccioná una categoría.'); const name=document.getElementById('add-product-name').value.trim(); if(!name) return showAlert('Escribí el nombre del producto.'); const data={ name, stock:Number(document.getElementById('add-initial-stock').value)||0, reorderThreshold:document.getElementById('add-reorder-threshold').value===''?null:Number(document.getElementById('add-reorder-threshold').value), iconName:document.getElementById('add-product-icon-name').value.trim()||'package', iconBgColor:document.getElementById('add-product-icon-bg').value, iconColor:document.getElementById('add-product-icon-color').value, unit:document.getElementById('add-product-unit').value, categoryId, category:getSelectedCategoryName(categoryId)||newCat, createdBy:resp, createdAt:Timestamp.now()}; await addDoc(col(PRIMARY.products), data); form.reset(); closeModal(document.getElementById('add-product-modal')); showAlert('Producto guardado correctamente.'); } catch(err){ console.error(err); showAlert('No se pudo guardar. Revisá conexión/permisos de Firebase.'); } });
